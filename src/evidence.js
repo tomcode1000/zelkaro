@@ -4,6 +4,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readZip } from './zip.js';
 
+/**
+ * Auto-discovery: every same-origin GET the browser made during a Kane run
+ * whose URL carries the record id or whose response contained the canary.
+ * Kane records a HAR for every run, so this costs no extra runs and finds
+ * background API calls the developer may have forgotten about.
+ */
+export function discoverRoutes(packPath, { origin, id, canary }) {
+  const zip = readZip(packPath);
+  const urls = new Map();
+  for (const name of zip.names().filter((n) => n.endsWith('.har'))) {
+    let har;
+    try { har = JSON.parse(zip.read(name).toString('utf8')); } catch { continue; }
+    for (const e of har?.log?.entries || []) {
+      const url = e.request?.url || '';
+      if (e.request?.method !== 'GET' || !url.startsWith(origin)) continue;
+      const body = e.response?.content?.text || '';
+      const hasId = id && new URL(url).pathname.split('/').includes(id);
+      const hasCanary = body.includes(canary);
+      if (hasId || hasCanary) urls.set(url.split('#')[0], { url, status: e.response?.status, sawCanary: hasCanary });
+    }
+  }
+  return [...urls.values()];
+}
+
 export function readSteps(packPath) {
   const zip = readZip(packPath);
   const stepDirs = new Map();

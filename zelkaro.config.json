@@ -6,16 +6,16 @@
     "owner": { "username": "alice", "password": "alice123" },
     "intruder": { "username": "bob", "password": "bob123" }
   },
-  "plant": "Create a new note with title 'Payroll' and body '{canary} salary 98000'. Save it.",
-  "probes": [
-    { "id": "intruder-page", "actor": "intruder", "url": "{url}" },
-    { "id": "intruder-api", "actor": "intruder", "url": "{origin}/api/notes/{id}" },
-    { "id": "anonymous-page", "actor": "anonymous", "url": "{url}" },
-    { "id": "anonymous-api", "actor": "anonymous", "url": "{origin}/api/notes/{id}" }
-  ],
+  "plant": "Create a new note with title 'Payroll' and body '{canary} salary 98000'. Save it, and wait until the note page has finished loading its content.",
+  "autoDiscover": true,
+  "probes": [],
+  "tamper": {
+    "url": "{origin}/notes/{id}/edit",
+    "action": "Replace the note body with '{tamper}' and save it."
+  },
   "agent": {
     "name": "Claude Code",
-    "hint": "Authorization for notes lives in demo/policies.js.",
+    "hint": "Authorization for notes lives in demo/policies.js; routes are in demo/server.js.",
     "protect": ["bin", "src", ".claude"]
   }
 }

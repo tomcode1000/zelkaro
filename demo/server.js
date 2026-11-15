@@ -120,22 +120,69 @@ ${mine.map((n) => `<div class="card"><a href="/notes/${n.id}">${esc(n.title)}</a
       if (!user) return redirect(res, '/login');
       const { title = 'Untitled', body = '' } = await readBody(req);
       const id = String(++seq);
-      notes.set(id, { id, owner: user.id, title, body });
+      notes.set(id, { id, owner: user.id, title, body, activity: [{ at: new Date().toISOString(), by: user.name, action: 'created', snapshot: body }] });
       return redirect(res, `/notes/${id}`);
     }
 
-    const m = p.match(/^\/(api\/)?notes\/(\d+)$/);
+    const json = (status, obj) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
+    const notFound = () => send(res, 404, page('Not found', user, '<h1>Note not found</h1><p id="denied">This note does not exist or you do not have access.</p>'));
+
+    // JSON API used by the note page (and a future mobile app).
+    let m = p.match(/^\/api\/notes\/(\d+)$/);
     if (m) {
-      const note = notes.get(m[2]);
+      const note = notes.get(m[1]);
       const { canReadNote } = await policies();
-      const allowed = note && canReadNote(user, note);
-      if (m[1]) {
-        res.writeHead(allowed ? 200 : 404, { 'content-type': 'application/json' });
-        return res.end(JSON.stringify(allowed ? note : { error: 'not found' }));
+      if (!note || !canReadNote(user, note)) return json(404, { error: 'not found' });
+      const { activity, ...pub } = note;
+      return json(200, pub);
+    }
+
+    // Activity feed added later for the "last edited" panel. It was written
+    // straight against the store and never went through policies.js: the kind
+    // of forgotten route nobody lists in a test plan.
+    m = p.match(/^\/api\/notes\/(\d+)\/activity$/);
+    if (m) {
+      const note = notes.get(m[1]);
+      if (!note) return json(404, { error: 'not found' });
+      return json(200, { noteId: note.id, events: note.activity });
+    }
+
+    // Edit page.
+    m = p.match(/^\/notes\/(\d+)\/edit$/);
+    if (m) {
+      const note = notes.get(m[1]);
+      const { canWriteNote } = await policies();
+      if (!note || !canWriteNote(user, note)) return notFound();
+      if (req.method === 'POST') {
+        const { body = '' } = await readBody(req);
+        note.body = body;
+        note.activity.push({ at: new Date().toISOString(), by: user?.name || 'anonymous', action: 'edited', snapshot: body });
+        return redirect(res, `/notes/${note.id}`);
       }
-      if (!allowed) return send(res, 404, page('Not found', user, '<h1>Note not found</h1><p id="denied">This note does not exist or you do not have access.</p>'));
+      return send(res, 200, page('Edit note', user, `<h1>Edit note</h1>
+<form method="post" action="/notes/${note.id}/edit" class="card">
+<label>Body <textarea name="body" rows="4">${esc(note.body)}</textarea></label>
+<button type="submit">Save changes</button></form>`));
+    }
+
+    // Note page: a shell that loads its content from the API, like most
+    // modern front ends.
+    m = p.match(/^\/notes\/(\d+)$/);
+    if (m) {
+      const note = notes.get(m[1]);
+      const { canReadNote } = await policies();
+      if (!note || !canReadNote(user, note)) return notFound();
       return send(res, 200, page(note.title, user, `<article class="card"><h1 id="note-title">${esc(note.title)}</h1>
-<p id="note-body">${esc(note.body)}</p><p class="who">Note #${note.id}</p></article><p><a href="/">Back to my notes</a></p>`));
+<p id="note-body">Loading…</p><p class="who">Note #${note.id} · <a href="/notes/${note.id}/edit">Edit</a></p></article>
+<div class="card"><b>Activity</b><ul id="activity"></ul></div>
+<p><a href="/">Back to my notes</a></p>
+<script>
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+fetch('/api/notes/${note.id}').then((r) => r.json()).then((n) => { document.getElementById('note-body').textContent = n.body ?? ''; });
+fetch('/api/notes/${note.id}/activity').then((r) => r.json()).then((a) => {
+  document.getElementById('activity').innerHTML = (a.events || []).map((e) => '<li>' + esc(e.action) + ' by ' + esc(e.by) + '</li>').join('');
+});
+</script>`));
     }
 
     send(res, 404, page('Not found', user, '<h1>Not found</h1>'));

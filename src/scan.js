@@ -1,23 +1,29 @@
 // One Zelkaro scan:
-//   1. plant   - Kane logs in as the owner and creates a private item that
-//                contains a random canary token. Kane reports its URL.
-//   2. control - Kane, as the owner, confirms the canary IS visible. This keeps
-//                a "fix" honest: denying everyone is not a fix.
-//   3. probes  - Kane, as another user and as a logged-out visitor, opens the
-//                item's page and API URLs and asserts the canary is NOT there.
+//   1. plant    - Kane signs in as the owner and creates a private record that
+//                 holds a random canary. Kane reports its URL.
+//   2. discover - Zelkaro reads the network log (HAR) from Kane's evidence pack
+//                 and collects every same-origin GET that carried the record id
+//                 or returned the canary, including background API calls.
+//   3. probes   - Kane, as a second user and as a logged-out visitor, opens
+//                 every discovered URL and asserts the canary is NOT there.
+//   4. tamper   - Kane, as the second user, tries to overwrite the record.
+//   5. control  - Kane, as the owner, confirms the record was not tampered with
+//                 and the canary IS still visible. Denying everyone is not a fix.
 // Every verdict comes from Kane running a real browser.
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { runKane } from './kane.js';
-import { extractProof } from './evidence.js';
+import { extractProof, discoverRoutes } from './evidence.js';
 
-const ACTORS = { owner: 'owner', intruder: 'intruder', anonymous: 'anonymous' };
+const OWNER = 'owner';
+const INTRUDER = 'intruder';
+const ANON = 'anonymous';
 
 function loginPhrase(cfg, actor) {
-  if (actor === ACTORS.anonymous) return 'Do not log in.';
-  // Variable names are neutral (user_1/user_2): Kane reads them, and a name
-  // like "intruder" makes it second-guess which account it should be using.
-  const key = actor === ACTORS.owner ? 'user_1' : 'user_2';
+  if (actor === ANON) return 'Do not log in.';
+  // Neutral variable names: Kane reads them, and a name like "intruder" makes
+  // it second-guess which account it should be using.
+  const key = actor === OWNER ? 'user_1' : 'user_2';
   const user = cfg.users[actor];
   // Prove the login worked before judging anything. Without this, a failed
   // login silently turns a "second user" probe into a logged-out probe, and a
@@ -33,10 +39,11 @@ function variables(cfg) {
   };
 }
 
+const idOf = (url) => (new URL(url).pathname.match(/([A-Za-z0-9_-]+)\/?$/) || [])[1] || '';
+
 export function expandUrl(template, planted) {
   const u = new URL(planted);
-  const id = (u.pathname.match(/([A-Za-z0-9_-]+)\/?$/) || [])[1] || '';
-  return template.replaceAll('{url}', planted).replaceAll('{origin}', u.origin).replaceAll('{id}', id);
+  return template.replaceAll('{url}', planted).replaceAll('{origin}', u.origin).replaceAll('{id}', idOf(planted));
 }
 
 function findUrl(end, origin) {
@@ -48,19 +55,38 @@ function findUrl(end, origin) {
   return pick?.[1] || null;
 }
 
-function verdictOf(res, expectVisible, canary, steps) {
+// Which assertion failed decides the verdict, so a failed sign-in check is
+// never mistaken for a leak.
+function failedAssert(steps, end) {
+  const step = steps.find((s) => s.status === 'failed' && /^assert/i.test(s.summary));
+  return step ? step.summary : String(end?.reason || '');
+}
+
+function noResult(res) {
+  return { verdict: 'error', detail: 'Kane produced no result: ' + res.stderr.split('\n').filter(Boolean).slice(-2).join(' ') };
+}
+
+function readVerdict(res, canary, steps) {
   const end = res.end;
-  if (!end) return { verdict: 'error', detail: 'Kane produced no result: ' + res.stderr.split('\n').filter(Boolean).slice(-2).join(' ') };
-  if (end.status === 'passed') return { verdict: expectVisible ? 'ok' : 'blocked', detail: end.one_liner || end.summary };
+  if (!end) return noResult(res);
+  if (end.status === 'passed') return { verdict: 'blocked', detail: end.one_liner || end.summary };
   if (String(end.reason_code || '').startsWith('assertion_error')) {
-    // Only the canary assertion decides leak / locked-out. If the sign-in
-    // assertion failed instead, the probe never ran as the right person.
-    const failed = steps.find((s) => s.status === 'failed' && /^assert/i.test(s.summary));
-    const aboutCanary = failed ? failed.summary.includes(canary) : String(end.reason || '').includes(canary);
-    if (aboutCanary) return { verdict: expectVisible ? 'owner-locked-out' : 'leak', detail: end.one_liner || end.reason };
+    if (failedAssert(steps, end).includes(canary)) return { verdict: 'leak', detail: end.one_liner || end.reason };
     return { verdict: 'inconclusive', detail: `sign-in check failed, so this probe proves nothing: ${end.one_liner || end.reason}` };
   }
   return { verdict: 'inconclusive', detail: `${end.reason_code}: ${end.one_liner || end.reason}` };
+}
+
+function ownerVerdict(res, canary, tamperToken, steps) {
+  const end = res.end;
+  if (!end) return { owner: noResult(res), tamper: null };
+  if (end.status === 'passed') return { owner: { verdict: 'ok', detail: end.one_liner || end.summary }, tamper: tamperToken ? 'blocked' : null };
+  const failed = failedAssert(steps, end);
+  if (String(end.reason_code || '').startsWith('assertion_error')) {
+    if (tamperToken && failed.includes(tamperToken)) return { owner: { verdict: 'ok', detail: 'owner signed in and opened the record' }, tamper: 'tampered', detail: end.one_liner || end.reason };
+    if (failed.includes(canary)) return { owner: { verdict: 'owner-locked-out', detail: end.one_liner || end.reason }, tamper: tamperToken ? 'blocked' : null };
+  }
+  return { owner: { verdict: 'inconclusive', detail: `${end.reason_code}: ${end.one_liner || end.reason}` }, tamper: tamperToken ? 'inconclusive' : null };
 }
 
 /**
@@ -69,21 +95,28 @@ function verdictOf(res, expectVisible, canary, steps) {
  */
 export async function scan(cfg, ctx) {
   const log = ctx.log;
-  const canary = 'CANARY-' + crypto.randomBytes(4).toString('hex');
+  const hex = () => crypto.randomBytes(4).toString('hex');
+  const canary = 'CANARY-' + hex();
+  const tamperToken = cfg.tamper ? 'TAMPERED-' + hex() : null;
   const vars = variables(cfg);
   const shotDir = path.join(ctx.outDir, 'screenshots');
-  const result = { label: ctx.label, canary, startedAt: new Date().toISOString(), plantedUrl: null, checks: [], credits: 0 };
+  const origin = new URL(cfg.baseUrl).origin;
   const loginUrl = cfg.baseUrl + cfg.loginPath;
+  const result = { label: ctx.label, canary, tamperToken, startedAt: new Date().toISOString(), plantedUrl: null, discovered: [], checks: [], credits: 0 };
+  let n = 0;
+  const kane = async (objective, url) => {
+    const res = await runKane(objective, { url, variables: vars, log: (s) => log('  kane> ' + s) });
+    result.credits += res.end?.credits_consumed || 0;
+    return res;
+  };
+  const proofOf = (res, id) => (res.pack ? extractProof(res.pack, shotDir, `${ctx.label}-${n++}-${id.replace(/[^a-z0-9-]+/gi, '_')}`) : { shots: [], steps: [] });
 
   // 1. Plant
   log(`plant: Kane signs in as the owner and creates a private ${cfg.resource} holding ${canary}`);
-  const plantObjective = `${loginPhrase(cfg, ACTORS.owner)} ${cfg.plant.replaceAll('{canary}', canary)} Then store the full URL of the page that shows the saved ${cfg.resource} as {{planted_url}}.`;
-  const plant = await runKane(plantObjective, { url: loginUrl, variables: vars, log: (s) => log('  kane> ' + s) });
-  result.credits += plant.end?.credits_consumed || 0;
-  const planted = findUrl(plant.end, new URL(cfg.baseUrl).origin);
-  const plantProof = plant.pack ? extractProof(plant.pack, shotDir, `${ctx.label}-0-plant`) : { shots: [], steps: [] };
-  result.checks.push({ id: 'plant', actor: 'owner', target: planted, expect: 'creates', verdict: planted ? 'ok' : 'error',
-    detail: plant.end?.one_liner || 'no result', proof: plantProof, testUrl: plant.end?.test_url || null });
+  const plant = await kane(`${loginPhrase(cfg, OWNER)} ${cfg.plant.replaceAll('{canary}', canary)} Then store the full URL of the page that shows the saved ${cfg.resource} as {{planted_url}}.`, loginUrl);
+  const planted = findUrl(plant.end, origin);
+  result.checks.push({ id: 'plant', actor: OWNER, target: planted, expect: 'creates', verdict: planted ? 'ok' : 'error',
+    detail: plant.end?.one_liner || 'no result', proof: proofOf(plant, 'plant'), testUrl: plant.end?.test_url || null });
   if (!planted) {
     result.error = 'Kane could not plant the canary, so nothing was tested.';
     return finish(result);
@@ -91,27 +124,63 @@ export async function scan(cfg, ctx) {
   result.plantedUrl = planted;
   log(`plant: ${planted}`);
 
-  // 2. Control + 3. Probes
-  const checks = [{ id: 'owner-control', actor: ACTORS.owner, url: '{url}', expectVisible: true }, ...cfg.probes.map((p) => ({ ...p, expectVisible: false }))];
-  let n = 1;
-  for (const c of checks) {
-    const target = expandUrl(c.url, planted);
-    const verb = c.expectVisible ? 'IS visible' : 'is NOT visible anywhere';
-    log(`${c.id}: Kane as ${c.actor} opens ${target}`);
-    const objective = `${loginPhrase(cfg, c.actor)} Then go to ${target} . Verify that the text '${canary}' ${verb} on the page.`;
-    const res = await runKane(objective, { url: c.actor === ACTORS.anonymous ? target : loginUrl, variables: vars, log: (s) => log('  kane> ' + s) });
-    result.credits += res.end?.credits_consumed || 0;
-    const proof = res.pack ? extractProof(res.pack, shotDir, `${ctx.label}-${n++}-${c.id}`) : { shots: [], steps: [] };
-    const v = verdictOf(res, c.expectVisible, canary, proof.steps);
-    result.checks.push({ id: c.id, actor: c.actor, target, expect: c.expectVisible ? 'visible' : 'hidden', ...v, proof, testUrl: res.end?.test_url || null });
-    log(`${c.id}: ${v.verdict.toUpperCase()} - ${v.detail}`);
+  // 2. Discover
+  const targets = new Map(); // key -> {url, how}
+  const add = (url, how) => { if (!targets.has(url)) targets.set(url, { url, how }); };
+  add(planted, 'planted page');
+  if (cfg.autoDiscover !== false && plant.pack) {
+    for (const r of discoverRoutes(plant.pack, { origin, id: idOf(planted), canary })) {
+      add(r.url, r.sawCanary ? 'discovered: response contained the canary' : 'discovered: URL carries the record id');
+      result.discovered.push(r);
+    }
+    log(`discover: Kane's network log shows ${result.discovered.length} route(s) touching the record: ${result.discovered.map((r) => new URL(r.url).pathname).join(', ') || 'none'}`);
+  }
+  for (const p of cfg.probes || []) add(expandUrl(p.url, planted), 'configured');
+
+  // 3. Read probes
+  for (const t of targets.values()) {
+    for (const actor of [INTRUDER, ANON]) {
+      const id = `${actor}:${new URL(t.url).pathname}`;
+      log(`${id}: Kane as ${actor} opens ${t.url}`);
+      const res = await kane(`${loginPhrase(cfg, actor)} Then go to ${t.url} . Verify that the text '${canary}' is NOT visible anywhere on the page.`, actor === ANON ? t.url : loginUrl);
+      const proof = proofOf(res, id);
+      const v = readVerdict(res, canary, proof.steps);
+      result.checks.push({ id, kind: 'read', actor, target: t.url, how: t.how, expect: 'hidden', ...v, proof, testUrl: res.end?.test_url || null });
+      log(`${id}: ${v.verdict.toUpperCase()} - ${v.detail}`);
+    }
+  }
+
+  // 4. Tamper attempt
+  let tamperCheck = null;
+  if (cfg.tamper) {
+    const target = expandUrl(cfg.tamper.url, planted);
+    const id = `${INTRUDER}:tamper`;
+    log(`${id}: Kane as ${INTRUDER} tries to overwrite the ${cfg.resource} at ${target}`);
+    const action = cfg.tamper.action.replaceAll('{tamper}', tamperToken);
+    const res = await kane(`${loginPhrase(cfg, INTRUDER)} Then go to ${target} . If a form to change the ${cfg.resource} is shown: ${action} If you get an error or a not-found page instead, stop there.`, loginUrl);
+    tamperCheck = { id, kind: 'tamper', actor: INTRUDER, target, how: 'configured', expect: 'unchanged', verdict: 'pending', detail: res.end?.one_liner || 'no result', proof: proofOf(res, id), testUrl: res.end?.test_url || null };
+    result.checks.push(tamperCheck);
+  }
+
+  // 5. Owner control (also judges the tamper attempt)
+  log(`owner-control: Kane as ${OWNER} opens ${planted}`);
+  const ownerAsserts = (tamperToken ? `Verify that the text '${tamperToken}' is NOT visible anywhere on the page. ` : '') + `Verify that the text '${canary}' IS visible on the page.`;
+  const ownerRes = await kane(`${loginPhrase(cfg, OWNER)} Then go to ${planted} . ${ownerAsserts}`, loginUrl);
+  const ownerProof = proofOf(ownerRes, 'owner-control');
+  const ov = ownerVerdict(ownerRes, canary, tamperToken, ownerProof.steps);
+  result.checks.push({ id: 'owner-control', kind: 'control', actor: OWNER, target: planted, expect: 'visible', ...ov.owner, proof: ownerProof, testUrl: ownerRes.end?.test_url || null });
+  log(`owner-control: ${ov.owner.verdict.toUpperCase()} - ${ov.owner.detail}`);
+  if (tamperCheck) {
+    tamperCheck.verdict = ov.tamper;
+    if (ov.tamper === 'tampered') tamperCheck.detail = `the owner's ${cfg.resource} now shows ${tamperToken}: ${ov.detail}`;
+    log(`${tamperCheck.id}: ${String(ov.tamper).toUpperCase()} - ${tamperCheck.detail}`);
   }
   return finish(result);
 }
 
 function finish(result) {
   result.finishedAt = new Date().toISOString();
-  result.leaks = result.checks.filter((c) => c.verdict === 'leak');
+  result.leaks = result.checks.filter((c) => c.verdict === 'leak' || c.verdict === 'tampered');
   result.problems = result.checks.filter((c) => ['owner-locked-out', 'inconclusive', 'error'].includes(c.verdict));
   result.status = result.error ? 'error' : result.leaks.length ? 'leaking' : result.problems.length ? 'inconclusive' : 'sealed';
   return result;

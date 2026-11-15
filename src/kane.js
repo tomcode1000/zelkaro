@@ -27,14 +27,19 @@ export async function runKane(objective, opts) {
   // Back-to-back runs can start while the previous run is still finalizing its
   // upload, and kane-cli then briefly reports an unconfigured project. Wait and
   // retry instead of recording a false "error".
+  // Seen in practice: a burst of several failures in a row, so back off up to
+  // ~9 minutes in total before giving up. Also pause briefly after every run.
   for (let attempt = 1; ; attempt++) {
     const res = await runOnce(objective, opts);
+    await sleep(5000);
     const transient = !res.end && /must be configured|lock/i.test(res.stderr);
-    if (!transient || attempt >= 5) return res;
-    opts.log?.(`kane busy finalizing the previous run, retrying in ${attempt * 10}s`);
-    await new Promise((r) => setTimeout(r, attempt * 10000));
+    if (!transient || attempt >= 8) return res;
+    opts.log?.(`kane not ready (transient), retrying in ${attempt * 15}s`);
+    await sleep(attempt * 15000);
   }
 }
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function runOnce(objective, opts) {
   const { cmd, pre } = kaneCommand();
