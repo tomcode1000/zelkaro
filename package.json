@@ -1,0 +1,14 @@
+{
+  "name": "crossleak",
+  "version": "0.1.0",
+  "description": "Finds cross-user data leaks in AI-built web apps with Kane CLI, hands the evidence to your coding agent, and proves the fix.",
+  "type": "module",
+  "bin": { "crossleak": "bin/crossleak.js" },
+  "scripts": {
+    "demo": "node demo/server.js",
+    "scan": "node bin/crossleak.js scan",
+    "heal": "node bin/crossleak.js heal"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
