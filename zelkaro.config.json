@@ -15,6 +15,7 @@
   ],
   "agent": {
     "name": "Claude Code",
-    "hint": "Authorization for notes lives in demo/policies.js."
+    "hint": "Authorization for notes lives in demo/policies.js.",
+    "protect": ["bin", "src", ".claude"]
   }
 }

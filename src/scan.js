@@ -18,7 +18,12 @@ function loginPhrase(cfg, actor) {
   // Variable names are neutral (user_1/user_2): Kane reads them, and a name
   // like "intruder" makes it second-guess which account it should be using.
   const key = actor === ACTORS.owner ? 'user_1' : 'user_2';
-  return `Log in at ${cfg.baseUrl}${cfg.loginPath} with username ${cfg.users[actor].username} and password {{${key}_password}}.`;
+  const user = cfg.users[actor];
+  // Prove the login worked before judging anything. Without this, a failed
+  // login silently turns a "second user" probe into a logged-out probe, and a
+  // leak that only signed-in users can reach would be reported as sealed.
+  const proof = user.signedInCheck || `the page shows you are signed in as ${user.username}`;
+  return `Log in at ${cfg.baseUrl}${cfg.loginPath} with username ${user.username} and password {{${key}_password}}. Verify that ${proof}.`;
 }
 
 function variables(cfg) {
@@ -43,13 +48,17 @@ function findUrl(end, origin) {
   return pick?.[1] || null;
 }
 
-function verdictOf(res, expectVisible) {
+function verdictOf(res, expectVisible, canary, steps) {
   const end = res.end;
   if (!end) return { verdict: 'error', detail: 'Kane produced no result: ' + res.stderr.split('\n').filter(Boolean).slice(-2).join(' ') };
   if (end.status === 'passed') return { verdict: expectVisible ? 'ok' : 'blocked', detail: end.one_liner || end.summary };
-  // A failed final verification is Kane's way of saying "I saw the canary".
   if (String(end.reason_code || '').startsWith('assertion_error')) {
-    return { verdict: expectVisible ? 'owner-locked-out' : 'leak', detail: end.one_liner || end.reason };
+    // Only the canary assertion decides leak / locked-out. If the sign-in
+    // assertion failed instead, the probe never ran as the right person.
+    const failed = steps.find((s) => s.status === 'failed' && /^assert/i.test(s.summary));
+    const aboutCanary = failed ? failed.summary.includes(canary) : String(end.reason || '').includes(canary);
+    if (aboutCanary) return { verdict: expectVisible ? 'owner-locked-out' : 'leak', detail: end.one_liner || end.reason };
+    return { verdict: 'inconclusive', detail: `sign-in check failed, so this probe proves nothing: ${end.one_liner || end.reason}` };
   }
   return { verdict: 'inconclusive', detail: `${end.reason_code}: ${end.one_liner || end.reason}` };
 }
@@ -92,8 +101,8 @@ export async function scan(cfg, ctx) {
     const objective = `${loginPhrase(cfg, c.actor)} Then go to ${target} . Verify that the text '${canary}' ${verb} on the page.`;
     const res = await runKane(objective, { url: c.actor === ACTORS.anonymous ? target : loginUrl, variables: vars, log: (s) => log('  kane> ' + s) });
     result.credits += res.end?.credits_consumed || 0;
-    const v = verdictOf(res, c.expectVisible);
     const proof = res.pack ? extractProof(res.pack, shotDir, `${ctx.label}-${n++}-${c.id}`) : { shots: [], steps: [] };
+    const v = verdictOf(res, c.expectVisible, canary, proof.steps);
     result.checks.push({ id: c.id, actor: c.actor, target, expect: c.expectVisible ? 'visible' : 'hidden', ...v, proof, testUrl: res.end?.test_url || null });
     log(`${c.id}: ${v.verdict.toUpperCase()} - ${v.detail}`);
   }

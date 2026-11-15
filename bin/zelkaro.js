@@ -38,7 +38,40 @@ const outDir = path.resolve(flag('out', 'zelkaro-report'));
 const json = has('json');
 const log = (s) => { if (!json) console.log(s); else process.stderr.write(s + '\n'); };
 
-fs.rmSync(outDir, { recursive: true, force: true });
+// Only ever delete a folder that is clearly a previous Zelkaro report.
+function clearReportDir(dir) {
+  if (!fs.existsSync(dir)) return;
+  const rel = path.relative(dir, cwd);
+  const isCwdOrParent = rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+  const entries = fs.readdirSync(dir);
+  const looksLikeReport = entries.length === 0 || entries.includes('report.json');
+  if (isCwdOrParent || entries.includes('.git') || !looksLikeReport) {
+    console.error(`zelkaro: refusing to clear ${dir}: it is not a previous Zelkaro report folder. Pick another --out.`);
+    process.exit(3);
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+clearReportDir(outDir);
+
+// Files the coding agent must not touch: the config (it defines what "sealed"
+// means) plus anything listed in agent.protect. Changes are reverted and
+// recorded, so an agent cannot pass by editing the test.
+function listFiles(p) {
+  if (!fs.existsSync(p)) return [];
+  if (fs.statSync(p).isFile()) return [p];
+  return fs.readdirSync(p).flatMap((e) => listFiles(path.join(p, e)));
+}
+function snapshot() {
+  const roots = [cfgPath, ...(cfg.agent?.protect || []).map((p) => path.resolve(p))];
+  return new Map(roots.flatMap(listFiles).map((f) => [f, fs.readFileSync(f)]));
+}
+function restoreTampered(before) {
+  const after = snapshot();
+  const touched = [];
+  for (const [f, buf] of before) if (!after.has(f) || !after.get(f).equals(buf)) { fs.writeFileSync(f, buf); touched.push(path.relative(cwd, f)); }
+  for (const f of after.keys()) if (!before.has(f)) { fs.rmSync(f); touched.push(path.relative(cwd, f)); }
+  return touched;
+}
 const run = { tool: 'zelkaro', baseUrl: cfg.baseUrl, resource: cfg.resource, startedAt: new Date().toISOString(), rounds: [], fixes: [] };
 
 async function main() {
@@ -54,9 +87,12 @@ async function main() {
 
     log(`\n=== Handing ${result.leaks.length} leak(s) to the coding agent`);
     const prompt = buildFixPrompt(cfg, result, outDir);
+    const guarded = snapshot();
     const res = await runAgent(cfg, prompt, cwd, log);
+    const tampered = restoreTampered(guarded);
+    if (tampered.length) log(`agent edited protected files, reverted: ${tampered.join(', ')}`);
     const diff = gitDiff(cwd);
-    run.fixes.push({ round, agent: cfg.agent?.name || 'Claude Code', prompt, reply: res.reply || res.stderr || `(agent exited ${res.code})`, diff });
+    run.fixes.push({ round, agent: cfg.agent?.name || 'Claude Code', prompt, reply: res.reply || res.stderr || `(agent exited ${res.code})`, diff, tampered });
     log(`agent: ${res.reply.split('\n').slice(-3).join(' ')}`);
     writeReport(outDir, run);
   }
