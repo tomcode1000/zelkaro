@@ -23,7 +23,20 @@ function kaneCommand() {
  * @param {string} objective  plain-English objective
  * @param {{url:string, variables?:object, maxSteps?:number, timeout?:number, headless?:boolean, log?:(s:string)=>void}} opts
  */
-export function runKane(objective, opts) {
+export async function runKane(objective, opts) {
+  // Back-to-back runs can start while the previous run is still finalizing its
+  // upload, and kane-cli then briefly reports an unconfigured project. Wait and
+  // retry instead of recording a false "error".
+  for (let attempt = 1; ; attempt++) {
+    const res = await runOnce(objective, opts);
+    const transient = !res.end && /must be configured|lock/i.test(res.stderr);
+    if (!transient || attempt >= 5) return res;
+    opts.log?.(`kane busy finalizing the previous run, retrying in ${attempt * 10}s`);
+    await new Promise((r) => setTimeout(r, attempt * 10000));
+  }
+}
+
+function runOnce(objective, opts) {
   const { cmd, pre } = kaneCommand();
   const args = [...pre, 'run', objective, '--agent', '--url', opts.url,
     '--max-steps', String(opts.maxSteps ?? 25), '--timeout', String(opts.timeout ?? 360)];

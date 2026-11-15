@@ -15,16 +15,17 @@ const ACTORS = { owner: 'owner', intruder: 'intruder', anonymous: 'anonymous' };
 
 function loginPhrase(cfg, actor) {
   if (actor === ACTORS.anonymous) return 'Do not log in.';
-  return `Log in at ${cfg.baseUrl}${cfg.loginPath} with username {{${actor}_username}} and password {{${actor}_password}}.`;
+  // Variable names are neutral (user_1/user_2): Kane reads them, and a name
+  // like "intruder" makes it second-guess which account it should be using.
+  const key = actor === ACTORS.owner ? 'user_1' : 'user_2';
+  return `Log in at ${cfg.baseUrl}${cfg.loginPath} with username ${cfg.users[actor].username} and password {{${key}_password}}.`;
 }
 
 function variables(cfg) {
-  const v = {};
-  for (const actor of [ACTORS.owner, ACTORS.intruder]) {
-    v[`${actor}_username`] = { value: cfg.users[actor].username, secret: false };
-    v[`${actor}_password`] = { value: cfg.users[actor].password, secret: true };
-  }
-  return v;
+  return {
+    user_1_password: { value: cfg.users.owner.password, secret: true },
+    user_2_password: { value: cfg.users.intruder.password, secret: true },
+  };
 }
 
 export function expandUrl(template, planted) {
