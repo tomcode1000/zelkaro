@@ -1,0 +1,936 @@
+{
+  "tool": "crossleak",
+  "baseUrl": "http://localhost:3000",
+  "resource": "note",
+  "startedAt": "2026-11-15T16:16:07.802Z",
+  "rounds": [
+    {
+      "label": "round-1",
+      "canary": "CANARY-ebda5238",
+      "startedAt": "2026-11-15T16:16:07.804Z",
+      "plantedUrl": "http://localhost:3000/notes/107",
+      "checks": [
+        {
+          "id": "plant",
+          "actor": "owner",
+          "target": "http://localhost:3000/notes/107",
+          "expect": "creates",
+          "verdict": "ok",
+          "detail": "created a Payroll note on the notes site",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-0-plant.jpg",
+                "step": "wait: Waiting 1000 ms after confirming the saved Payroll note",
+                "status": "passed",
+                "url": "http://localhost:3000/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"alice\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_1_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "type: Entering Payroll into the note title field"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "type: Typing CANARY-ebda5238 salary 98000 into the note body field"
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "click: Clicking Save note button"
+              },
+              {
+                "ordinal": 10,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(url, 'The full URL of the page that shows the saved note is stored as {{"
+              },
+              {
+                "ordinal": 11,
+                "status": "passed",
+                "summary": "wait: Waiting 1000 ms after confirming the saved Payroll note"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7FZV69HHMRG9T02FWKWAJHK/dashboard/share/US_C4U4NE2VAW2Y5FT0VKY7Q5KM0874V8KOF35L4GTD45VEOWEYQR7YUR8FQIHIIY0R?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "owner-control",
+          "actor": "owner",
+          "target": "http://localhost:3000/notes/107",
+          "expect": "visible",
+          "verdict": "ok",
+          "detail": "viewed note 107 on localhost",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-1-owner-control.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is visible on the page",
+                "status": "passed",
+                "url": "http://localhost:3000/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"alice\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_1_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button on the login form"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "navigate: PRIMARY: Go to http://localhost:3000/notes/107"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "wait: PRIMARY: wait for the heading \"Payroll\" to be visible"
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "analyze: the text 'CANARY-ebda5238' is visible on the page"
+              },
+              {
+                "ordinal": 10,
+                "status": "passed",
+                "summary": "assert: the text 'CANARY-ebda5238' is visible on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7FZY2XEP21RA1ZAF68266KB/dashboard/share/US_B63L5AFHVNUHTMUWQ5JIO25TBAOZ9EQR41SGGGNE5GNDAQMLECX57LGQC750REZ0?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "intruder-page",
+          "actor": "intruder",
+          "target": "http://localhost:3000/notes/107",
+          "expect": "hidden",
+          "verdict": "leak",
+          "detail": "Bob can open note 107 and see the protected CANARY text when it should not be visible.",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-2-intruder-page.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page.",
+                "status": "failed",
+                "url": "http://localhost:3000/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"bob\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_2_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "navigate: PRIMARY: Go to http://localhost:3000/notes/107"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "wait: PRIMARY: wait for the heading \"Payroll\" to be visible"
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(textual_visual, \"the text 'CANARY-ebda5238' is NOT visible anywhere on t"
+              },
+              {
+                "ordinal": 10,
+                "status": "failed",
+                "summary": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page."
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G00SR6E6RHQNEMHHJVN40H/dashboard/share/US_Q7AD69GUE0I16WLWLP888SDJ7VKRS9TQLIDTF35W1D5JR3EIGAIT411EEISM7M6X?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "intruder-api",
+          "actor": "intruder",
+          "target": "http://localhost:3000/api/notes/107",
+          "expect": "hidden",
+          "verdict": "leak",
+          "detail": "While signed in as bob, the page exposed the canary text from note 107, which belongs to alice.",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-3-intruder-api.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page",
+                "status": "failed",
+                "url": "http://localhost:3000/api/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"bob\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_2_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button in login form"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "navigate: PRIMARY: Go to http://localhost:3000/api/notes/107"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "wait: PRIMARY: wait for the API response page to load"
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "analyze: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              },
+              {
+                "ordinal": 10,
+                "status": "failed",
+                "summary": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G039GAQMYV7JJKEP6H36JR/dashboard/share/US_KYSHXDU1SLFC8ICA3793S3JJOT1L83PHFTKMOPUN8PHBGWDB3UTMRYR1YXE4LORQ?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "anonymous-page",
+          "actor": "anonymous",
+          "target": "http://localhost:3000/notes/107",
+          "expect": "hidden",
+          "verdict": "leak",
+          "detail": "The page shows the protected CANARY text even though the visitor did not log in.",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-4-anonymous-page.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page",
+                "status": "failed",
+                "url": "http://localhost:3000/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/notes/107"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(textual_visual, \"the text 'CANARY-ebda5238' is NOT visible anywhere on t"
+              },
+              {
+                "ordinal": 3,
+                "status": "failed",
+                "summary": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G066RWC1FP8B2F6YWTYQB4/dashboard/share/US_BG8IT1CU921G4ZS96L3CM4ENXGDMS21IT4COZFS50HM1OEFYMFE11R5SESZFTEJ0?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "anonymous-api",
+          "actor": "anonymous",
+          "target": "http://localhost:3000/api/notes/107",
+          "expect": "hidden",
+          "verdict": "leak",
+          "detail": "The page exposes the canary text without logging in, so the required absence check correctly failed.",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-5-anonymous-api.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page",
+                "status": "failed",
+                "url": "http://localhost:3000/api/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/api/notes/107"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "analyze: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              },
+              {
+                "ordinal": 3,
+                "status": "failed",
+                "summary": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G07NKQWV656JJKJ9GJ50XN/dashboard/share/US_L53SF7P0W60VIU6FV3IMEXFJZ7DD4HTPG056GL6PWM9P9R2CZMX1K8JXIW0KEZU2?type=summary&agentView=true&fqdn=summary-page"
+        }
+      ],
+      "credits": 118.80066249999999,
+      "finishedAt": "2026-11-15T16:23:58.893Z",
+      "leaks": [
+        {
+          "id": "intruder-page",
+          "actor": "intruder",
+          "target": "http://localhost:3000/notes/107",
+          "expect": "hidden",
+          "verdict": "leak",
+          "detail": "Bob can open note 107 and see the protected CANARY text when it should not be visible.",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-2-intruder-page.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page.",
+                "status": "failed",
+                "url": "http://localhost:3000/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"bob\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_2_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "navigate: PRIMARY: Go to http://localhost:3000/notes/107"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "wait: PRIMARY: wait for the heading \"Payroll\" to be visible"
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(textual_visual, \"the text 'CANARY-ebda5238' is NOT visible anywhere on t"
+              },
+              {
+                "ordinal": 10,
+                "status": "failed",
+                "summary": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page."
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G00SR6E6RHQNEMHHJVN40H/dashboard/share/US_Q7AD69GUE0I16WLWLP888SDJ7VKRS9TQLIDTF35W1D5JR3EIGAIT411EEISM7M6X?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "intruder-api",
+          "actor": "intruder",
+          "target": "http://localhost:3000/api/notes/107",
+          "expect": "hidden",
+          "verdict": "leak",
+          "detail": "While signed in as bob, the page exposed the canary text from note 107, which belongs to alice.",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-3-intruder-api.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page",
+                "status": "failed",
+                "url": "http://localhost:3000/api/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"bob\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_2_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button in login form"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "navigate: PRIMARY: Go to http://localhost:3000/api/notes/107"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "wait: PRIMARY: wait for the API response page to load"
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "analyze: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              },
+              {
+                "ordinal": 10,
+                "status": "failed",
+                "summary": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G039GAQMYV7JJKEP6H36JR/dashboard/share/US_KYSHXDU1SLFC8ICA3793S3JJOT1L83PHFTKMOPUN8PHBGWDB3UTMRYR1YXE4LORQ?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "anonymous-page",
+          "actor": "anonymous",
+          "target": "http://localhost:3000/notes/107",
+          "expect": "hidden",
+          "verdict": "leak",
+          "detail": "The page shows the protected CANARY text even though the visitor did not log in.",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-4-anonymous-page.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page",
+                "status": "failed",
+                "url": "http://localhost:3000/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/notes/107"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(textual_visual, \"the text 'CANARY-ebda5238' is NOT visible anywhere on t"
+              },
+              {
+                "ordinal": 3,
+                "status": "failed",
+                "summary": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G066RWC1FP8B2F6YWTYQB4/dashboard/share/US_BG8IT1CU921G4ZS96L3CM4ENXGDMS21IT4COZFS50HM1OEFYMFE11R5SESZFTEJ0?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "anonymous-api",
+          "actor": "anonymous",
+          "target": "http://localhost:3000/api/notes/107",
+          "expect": "hidden",
+          "verdict": "leak",
+          "detail": "The page exposes the canary text without logging in, so the required absence check correctly failed.",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-1-5-anonymous-api.jpg",
+                "step": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page",
+                "status": "failed",
+                "url": "http://localhost:3000/api/notes/107"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/api/notes/107"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "analyze: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              },
+              {
+                "ordinal": 3,
+                "status": "failed",
+                "summary": "assert: the text 'CANARY-ebda5238' is NOT visible anywhere on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G07NKQWV656JJKJ9GJ50XN/dashboard/share/US_L53SF7P0W60VIU6FV3IMEXFJZ7DD4HTPG056GL6PWM9P9R2CZMX1K8JXIW0KEZU2?type=summary&agentView=true&fqdn=summary-page"
+        }
+      ],
+      "problems": [],
+      "status": "leaking"
+    },
+    {
+      "label": "round-2",
+      "canary": "CANARY-bb12566e",
+      "startedAt": "2026-11-15T16:24:20.050Z",
+      "plantedUrl": "http://localhost:3000/notes/108",
+      "checks": [
+        {
+          "id": "plant",
+          "actor": "owner",
+          "target": "http://localhost:3000/notes/108",
+          "expect": "creates",
+          "verdict": "ok",
+          "detail": "created a Payroll note on localhost:3000",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-2-0-plant.jpg",
+                "step": "wait: Waiting 1000 ms after confirming the saved Payroll note detail page",
+                "status": "passed",
+                "url": "http://localhost:3000/notes/108"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"alice\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_1_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button on login form"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Title\"; type \"Body\"; click \"Save note\""
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "type: Type \"Payroll\" into \"Title\""
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "type: Type \"CANARY-bb12566e salary 98000\" into \"Body\""
+              },
+              {
+                "ordinal": 10,
+                "status": "passed",
+                "summary": "click: Click \"Save note\""
+              },
+              {
+                "ordinal": 11,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(url, 'the full URL of the page that shows the saved note is stored as {{"
+              },
+              {
+                "ordinal": 12,
+                "status": "passed",
+                "summary": "wait: Waiting 1000 ms after confirming the saved Payroll note detail page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0A50MCCEY0G4V4S0W50JY/dashboard/share/US_3VBD14XRFYRGB5PYPML4JBZ1GVZKBQC2H4OPXYJ7L3Q0G5ZAYLTVY26Z9ZQEO3W4?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "owner-control",
+          "actor": "owner",
+          "target": "http://localhost:3000/notes/108",
+          "expect": "visible",
+          "verdict": "ok",
+          "detail": "opened note 108 on localhost",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-2-1-owner-control.jpg",
+                "step": "assert: the text 'CANARY-bb12566e' is visible on the page",
+                "status": "passed",
+                "url": "http://localhost:3000/notes/108"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"alice\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_1_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button on the login form"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "navigate: PRIMARY: Go to http://localhost:3000/notes/108"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "wait: PRIMARY: wait for the note page to load"
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "analyze: the text 'CANARY-bb12566e' is visible on the page"
+              },
+              {
+                "ordinal": 10,
+                "status": "passed",
+                "summary": "assert: the text 'CANARY-bb12566e' is visible on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0CZ73BKEVX3NWCFKZPZH4/dashboard/share/US_RXJGYZC14ZF995WGUZ7SMFLH1SHEZ0HC4SX5YUCHOB9GAJQUL9EPNB3GKAHPS4IG?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "intruder-page",
+          "actor": "intruder",
+          "target": "http://localhost:3000/notes/108",
+          "expect": "hidden",
+          "verdict": "blocked",
+          "detail": "opened note 108 on localhost",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-2-2-intruder-page.jpg",
+                "step": "assert: the text 'CANARY-bb12566e' is NOT visible anywhere on the page.",
+                "status": "passed",
+                "url": "http://localhost:3000/notes/108"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"bob\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_2_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking Log in button in login form"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "navigate: PRIMARY: Go to http://localhost:3000/notes/108"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "wait: PRIMARY: wait for the requested note page to load"
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(visual, \"the text 'CANARY-bb12566e' is NOT visible anywhere on the page."
+              },
+              {
+                "ordinal": 10,
+                "status": "passed",
+                "summary": "assert: the text 'CANARY-bb12566e' is NOT visible anywhere on the page."
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0FFCW6VH9TEQGSQRW6SYV/dashboard/share/US_6KHG6UMBYKMHCYBDEUH6HSOFS7OB5LZLGRRAAECI7TWO25MO0RVWA126MYTV97GI?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "intruder-api",
+          "actor": "intruder",
+          "target": "http://localhost:3000/api/notes/108",
+          "expect": "hidden",
+          "verdict": "blocked",
+          "detail": "opened the requested note API page on localhost",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-2-3-intruder-api.jpg",
+                "step": "assert: the text 'CANARY-bb12566e' is NOT visible anywhere on the page.",
+                "status": "passed",
+                "url": "http://localhost:3000/api/notes/108"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/login"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Log in\""
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "type: Type \"bob\" into \"Username\""
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "type: Type \"{{secrets.user.user_2_password}}\" into \"Password\""
+              },
+              {
+                "ordinal": 6,
+                "status": "passed",
+                "summary": "click: Clicking the Log in button in the login form"
+              },
+              {
+                "ordinal": 7,
+                "status": "passed",
+                "summary": "navigate: PRIMARY: Go to http://localhost:3000/api/notes/108"
+              },
+              {
+                "ordinal": 8,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(visual, \"the text 'CANARY-bb12566e' is NOT visible anywhere on the page."
+              },
+              {
+                "ordinal": 9,
+                "status": "passed",
+                "summary": "assert: the text 'CANARY-bb12566e' is NOT visible anywhere on the page."
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0J94EYZV0G25P54SFYBQ3/dashboard/share/US_GSL53A4PM0JCNKBJ2BBUBWJRGA2LJ8VVC2MKHGX962THJ4T3ALHAJDKN9CTG7CX3?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "anonymous-page",
+          "actor": "anonymous",
+          "target": "http://localhost:3000/notes/108",
+          "expect": "hidden",
+          "verdict": "blocked",
+          "detail": "opened the requested note page on localhost",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-2-4-anonymous-page.jpg",
+                "step": "assert: the text 'CANARY-bb12566e' is NOT visible anywhere on the page.",
+                "status": "passed",
+                "url": "http://localhost:3000/notes/108"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/notes/108"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "analyze: ANALYZE(visual, \"the text 'CANARY-bb12566e' is NOT visible anywhere on the page."
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "assert: the text 'CANARY-bb12566e' is NOT visible anywhere on the page."
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0MREEPNKSZ9A21NZZVPV3/dashboard/share/US_MI9J2HUQDCR9GFP1SQIKNQOLQ4GVIJGFB9ZI7PYBFMQJPGAAZFGGKXJHH8XASH5C?type=summary&agentView=true&fqdn=summary-page"
+        },
+        {
+          "id": "anonymous-api",
+          "actor": "anonymous",
+          "target": "http://localhost:3000/api/notes/108",
+          "expect": "hidden",
+          "verdict": "blocked",
+          "detail": "opened the requested notes API page on localhost",
+          "proof": {
+            "shots": [
+              {
+                "file": "round-2-5-anonymous-api.jpg",
+                "step": "assert: the text 'CANARY-bb12566e' is NOT visible anywhere on the page",
+                "status": "passed",
+                "url": "http://localhost:3000/api/notes/108"
+              }
+            ],
+            "steps": [
+              {
+                "ordinal": 1,
+                "status": "passed",
+                "summary": "navigate: Navigate to http://localhost:3000/api/notes/108"
+              },
+              {
+                "ordinal": 2,
+                "status": "passed",
+                "summary": "wait: PRIMARY: Go to http://localhost:3000/api/notes/108"
+              },
+              {
+                "ordinal": 3,
+                "status": "passed",
+                "summary": "analyze: the text 'CANARY-bb12566e' is NOT visible anywhere on the page"
+              },
+              {
+                "ordinal": 4,
+                "status": "passed",
+                "summary": "assert: the text 'CANARY-bb12566e' is NOT visible anywhere on the page"
+              }
+            ]
+          },
+          "testUrl": "https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0P9GE1GA5NQZGY3536A7X/dashboard/share/US_HAMTEO7EHAXILG9I02MY6Y1N7AY0FM46W3NQRNHS72YL3Z42PT7JQU6ZK07AHHBL?type=summary&agentView=true&fqdn=summary-page"
+        }
+      ],
+      "credits": 106.248925,
+      "finishedAt": "2026-11-15T16:31:56.576Z",
+      "leaks": [],
+      "problems": [],
+      "status": "sealed"
+    }
+  ],
+  "fixes": [
+    {
+      "round": 1,
+      "agent": "Claude Code",
+      "prompt": "Kane CLI (a real-browser test agent) just found cross-user data leaks in this app.\n\nThe owner (alice) created a private note at http://localhost:3000/notes/107 containing the canary \"CANARY-ebda5238\".\nOther people could read it:\n- intruder-page: as intruder, Kane opened http://localhost:3000/notes/107 and saw the owner's secret \"CANARY-ebda5238\". Kane said: \"Bob can open note 107 and see the protected CANARY text when it should not be visible.\". Screenshot: C:\\Users\\Toleexxzy\\OneDrive\\Documents\\coding projects\\crossleak\\crossleak-report\\screenshots\\round-1-2-intruder-page.jpg\n- intruder-api: as intruder, Kane opened http://localhost:3000/api/notes/107 and saw the owner's secret \"CANARY-ebda5238\". Kane said: \"While signed in as bob, the page exposed the canary text from note 107, which belongs to alice.\". Screenshot: C:\\Users\\Toleexxzy\\OneDrive\\Documents\\coding projects\\crossleak\\crossleak-report\\screenshots\\round-1-3-intruder-api.jpg\n- anonymous-page: as anonymous, Kane opened http://localhost:3000/notes/107 and saw the owner's secret \"CANARY-ebda5238\". Kane said: \"The page shows the protected CANARY text even though the visitor did not log in.\". Screenshot: C:\\Users\\Toleexxzy\\OneDrive\\Documents\\coding projects\\crossleak\\crossleak-report\\screenshots\\round-1-4-anonymous-page.jpg\n- anonymous-api: as anonymous, Kane opened http://localhost:3000/api/notes/107 and saw the owner's secret \"CANARY-ebda5238\". Kane said: \"The page exposes the canary text without logging in, so the required absence check correctly failed.\". Screenshot: C:\\Users\\Toleexxzy\\OneDrive\\Documents\\coding projects\\crossleak\\crossleak-report\\screenshots\\round-1-5-anonymous-api.jpg\n\nFix the access control so a note can only be read by its owner, on every route listed above (pages and API).\nRules:\n- The owner must still be able to read their own note. Kane re-checks this, so denying everyone fails.\n- Fix the root cause in the authorization logic. Do not hide content with CSS or rename routes.\n- Do not edit crossleak.config.json, the canary, or anything under crossleak-report/.\n- Hint from the project: Authorization for notes lives in demo/policies.js.\n\nWhen done, reply with two sentences: what was wrong and what you changed.",
+      "reply": "The leak came from `canReadNote()` in `demo/policies.js`: it returned `true` for everyone, so Bob and logged-out visitors could read Alice's note on both `/notes/:id` and `/api/notes/:id`, since both routes use that one check. I changed it to return true only when a user is signed in and their `user.id` matches the note's `owner`, which keeps Alice's access and denies everyone else — I haven't re-run Kane yet, but the server reloads `policies.js` on each request, so a re-scan should pick up the fix with no restart.",
+      "diff": "diff --git a/demo/policies.js b/demo/policies.js\nindex 7fcd77b..9782947 100644\n--- a/demo/policies.js\n+++ b/demo/policies.js\n@@ -11,5 +11,7 @@\n  * @returns {boolean}\n  */\n export function canReadNote(user, note) {\n-  return true;\n+  // Only the owner may read a note. Anonymous visitors (user === null) and\n+  // any other signed-in user are denied.\n+  return Boolean(user && note && user.id === note.owner);\n }\n"
+    }
+  ],
+  "finishedAt": "2026-11-15T16:31:56.580Z"
+}
