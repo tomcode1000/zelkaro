@@ -8,7 +8,7 @@ import path from 'node:path';
 let resolved;
 function kaneCommand() {
   if (resolved) return resolved;
-  if (process.env.CROSSLEAK_KANE) return (resolved = { cmd: process.env.CROSSLEAK_KANE, pre: [] });
+  if (process.env.ZELKARO_KANE) return (resolved = { cmd: process.env.ZELKARO_KANE, pre: [] });
   // On Windows the npm shim is a .cmd/.ps1, which mangles quoted arguments.
   // Run the package's JS entry with node directly instead.
   try {

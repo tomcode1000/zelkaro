@@ -1,4 +1,4 @@
-// Notely: a tiny multi-user notes app used as Crossleak's demo target.
+// Notely: a tiny multi-user notes app used as Zelkaro's demo target.
 // Zero dependencies: run with `node demo/server.js` (Node 18+).
 import http from 'node:http';
 import crypto from 'node:crypto';

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// crossleak scan   - Kane tries to read one user's data as other people
-// crossleak heal   - scan, hand leaks to your coding agent, re-scan until sealed
+// zelkaro scan   - Kane tries to read one user's data as other people
+// zelkaro heal   - scan, hand leaks to your coding agent, re-scan until sealed
 import fs from 'node:fs';
 import path from 'node:path';
 import { scan } from '../src/scan.js';
@@ -16,11 +16,11 @@ const flag = (name, def) => {
 const has = (name) => argv.includes(`--${name}`);
 
 if (!cmd || cmd === '--help' || cmd === '-h' || !['scan', 'heal'].includes(cmd)) {
-  console.log(`crossleak: find cross-user data leaks with Kane CLI, fix them with your coding agent, prove the fix.
+  console.log(`zelkaro: find cross-user data leaks with Kane CLI, fix them with your coding agent, prove the fix.
 
 Usage:
-  crossleak scan [--config crossleak.config.json] [--out crossleak-report] [--json]
-  crossleak heal [--config crossleak.config.json] [--out crossleak-report] [--max-rounds 3]
+  zelkaro scan [--config zelkaro.config.json] [--out zelkaro-report] [--json]
+  zelkaro heal [--config zelkaro.config.json] [--out zelkaro-report] [--max-rounds 3]
 
 scan  exits 0 when sealed, 1 when Kane saw a leak, 2 when inconclusive.
 heal  loops scan -> agent fix -> scan until Kane proves no leaks (or max rounds).
@@ -30,16 +30,16 @@ Requires kane-cli (npm i -g @testmuai/kane-cli) and \`kane-cli login\`.`);
 }
 
 const cwd = process.cwd();
-const cfgPath = path.resolve(flag('config', 'crossleak.config.json'));
+const cfgPath = path.resolve(flag('config', 'zelkaro.config.json'));
 const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
 cfg.loginPath ??= '/login';
 cfg.resource ??= 'item';
-const outDir = path.resolve(flag('out', 'crossleak-report'));
+const outDir = path.resolve(flag('out', 'zelkaro-report'));
 const json = has('json');
 const log = (s) => { if (!json) console.log(s); else process.stderr.write(s + '\n'); };
 
 fs.rmSync(outDir, { recursive: true, force: true });
-const run = { tool: 'crossleak', baseUrl: cfg.baseUrl, resource: cfg.resource, startedAt: new Date().toISOString(), rounds: [], fixes: [] };
+const run = { tool: 'zelkaro', baseUrl: cfg.baseUrl, resource: cfg.resource, startedAt: new Date().toISOString(), rounds: [], fixes: [] };
 
 async function main() {
   const maxRounds = cmd === 'heal' ? Number(flag('max-rounds', 3)) : 1;

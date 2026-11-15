@@ -1,6 +1,6 @@
 // Hands Kane's findings to a coding agent and lets it patch the app.
 // Default agent: Claude Code in print mode. Any agent that reads a prompt on
-// stdin works: set "agent.command" in crossleak.config.json.
+// stdin works: set "agent.command" in zelkaro.config.json.
 import { spawn, execSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -19,7 +19,7 @@ Fix the access control so a ${cfg.resource} can only be read by its owner, on ev
 Rules:
 - The owner must still be able to read their own ${cfg.resource}. Kane re-checks this, so denying everyone fails.
 - Fix the root cause in the authorization logic. Do not hide content with CSS or rename routes.
-- Do not edit crossleak.config.json, the canary, or anything under crossleak-report/.
+- Do not edit zelkaro.config.json, the canary, or anything under zelkaro-report/.
 ${cfg.agent?.hint ? `- Hint from the project: ${cfg.agent.hint}\n` : ''}
 When done, reply with two sentences: what was wrong and what you changed.`;
 }
@@ -40,7 +40,7 @@ export function runAgent(cfg, prompt, cwd, log) {
 
 export function gitDiff(cwd) {
   try {
-    return execSync('git --no-pager diff --no-color -- . ":(exclude)crossleak-report"', { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return execSync('git --no-pager diff --no-color -- . ":(exclude)zelkaro-report"', { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   } catch {
     return '';
   }

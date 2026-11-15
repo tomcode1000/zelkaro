@@ -1,8 +1,8 @@
-# Crossleak
+# Zelkaro
 
-![crossleak](docs/proof/badge.svg)
+![zelkaro](docs/proof/badge.svg)
 
-**Your AI-built app lets users read each other's data. Crossleak proves it in a real browser with Kane CLI, hands the evidence to your coding agent, and doesn't call it fixed until Kane proves the leak is gone.**
+**Your AI-built app lets users read each other's data. Zelkaro proves it in a real browser with Kane CLI, hands the evidence to your coding agent, and doesn't call it fixed until Kane proves the leak is gone.**
 
 Built for the [Kane CLI Online Hackathon](https://www.kaneclihack.sh/) (12–19 Nov 2026).
 
@@ -20,10 +20,10 @@ Broken access control is the bug vibe-coded apps ship most, and it's invisible u
 
 Static scanners read code. This bug only exists at runtime: **user B signs in and sees user A's row.** That takes a real browser and two real accounts. That's what Kane CLI is for.
 
-## What Crossleak does
+## What Zelkaro does
 
 ```
-            ┌───────────────────────── crossleak heal ─────────────────────────┐
+            ┌────────────────────────── zelkaro heal ──────────────────────────┐
             │                                                                  │
   1 PLANT   │  Kane signs in as user 1, creates a private record holding a     │
             │  random canary (CANARY-xxxxxxxx), and reports its URL            │
@@ -40,7 +40,7 @@ Static scanners read code. This bug only exists at runtime: **user B signs in an
             └──────────────────────────────────────────────────────────────────┘
 ```
 
-- **Every verdict comes from Kane** driving real Chrome. Crossleak never decides a leak by itself.
+- **Every verdict comes from Kane** driving real Chrome. Zelkaro never decides a leak by itself.
 - **A new canary every round**, so a fix can't pass by special-casing one record.
 - **The owner-control check** keeps the agent honest. "Return 403 for everyone" gets flagged as `owner-locked-out`.
 - **Proof is extracted from Kane's sealed evidence packs**: the screenshot at the step that decided each verdict, plus a link to the Kane run in Test Manager.
@@ -121,23 +121,23 @@ Requirements: Node 18+, [Kane CLI](https://www.testmuai.com/support/docs/kane-cl
 npm install -g @testmuai/kane-cli
 kane-cli login --oauth
 
-git clone https://github.com/tomcode1000/crossleak && cd crossleak
+git clone https://github.com/tomcode1000/zelkaro && cd zelkaro
 
 # terminal 1: the deliberately leaky demo app (zero dependencies)
 npm run demo                      # http://localhost:3000  users: alice/alice123, bob/bob123
 
 # terminal 2
-node bin/crossleak.js scan        # Kane finds the leaks, exits 1
-node bin/crossleak.js heal        # Kane finds them, Claude fixes them, Kane proves it, exits 0
+node bin/zelkaro.js scan        # Kane finds the leaks, exits 1
+node bin/zelkaro.js heal        # Kane finds them, Claude fixes them, Kane proves it, exits 0
 ```
 
-The report lands in `crossleak-report/REPORT.md` with every screenshot.
+The report lands in `zelkaro-report/REPORT.md` with every screenshot.
 
 To reset the demo: `git checkout demo/policies.js`.
 
 ## Use it on your own app
 
-Edit `crossleak.config.json`:
+Edit `zelkaro.config.json`:
 
 ```json
 {
@@ -164,11 +164,11 @@ Edit `crossleak.config.json`:
 - `agent.command` swaps Claude Code for any agent that reads a prompt on stdin (Codex, Gemini CLI, Aider...).
 - Passwords are sent to Kane as **secret variables**, never inside the objective text.
 
-Only point Crossleak at apps you own or are authorized to test.
+Only point Zelkaro at apps you own or are authorized to test.
 
 ## Inside your coding agent
 
-`.claude/skills/crossleak/SKILL.md` teaches Claude Code to run `crossleak scan --json` before it calls any auth or data-access change "done", read Kane's verdicts, and fix what Kane caught. `scan --json` prints:
+`.claude/skills/zelkaro/SKILL.md` teaches Claude Code to run `zelkaro scan --json` before it calls any auth or data-access change "done", read Kane's verdicts, and fix what Kane caught. `scan --json` prints:
 
 ```json
 { "status": "leaking", "leaks": [{ "id": "intruder-api", "actor": "intruder", "target": "http://localhost:3000/api/notes/105", "kane": "A logged-in user can open note 105 and see the protected CANARY payroll text." }], "report": ".../REPORT.md" }
@@ -187,7 +187,7 @@ Exit codes: `0` sealed, `1` leaking, `2` inconclusive. That makes it a drop-in C
 ## Project layout
 
 ```
-bin/crossleak.js        CLI: scan, heal
+bin/zelkaro.js        CLI: scan, heal
 src/scan.js             plant, control, probes; turns Kane results into verdicts
 src/kane.js             runs `kane-cli run --agent`, parses NDJSON, retries while Kane finalizes
 src/evidence.js         reads Kane evidence packs, pulls the decisive screenshot

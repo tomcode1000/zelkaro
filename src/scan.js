@@ -1,4 +1,4 @@
-// One Crossleak scan:
+// One Zelkaro scan:
 //   1. plant   - Kane logs in as the owner and creates a private item that
 //                contains a random canary token. Kane reports its URL.
 //   2. control - Kane, as the owner, confirms the canary IS visible. This keeps
@@ -55,7 +55,7 @@ function verdictOf(res, expectVisible) {
 }
 
 /**
- * @param {object} cfg   parsed crossleak.config.json
+ * @param {object} cfg   parsed zelkaro.config.json
  * @param {{outDir:string, label:string, log:(s:string)=>void}} ctx
  */
 export async function scan(cfg, ctx) {

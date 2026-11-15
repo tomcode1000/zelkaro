@@ -1,4 +1,4 @@
-// Minimal zip reader (stored + deflate) so Crossleak can read Kane evidence
+// Minimal zip reader (stored + deflate) so Zelkaro can read Kane evidence
 // packs without any dependencies.
 import fs from 'node:fs';
 import zlib from 'node:zlib';

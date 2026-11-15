@@ -9,9 +9,9 @@ const WORD = { ok: 'OK', blocked: 'Blocked', leak: 'LEAK', 'owner-locked-out': '
 function badge(status) {
   const [label, color] = status === 'sealed' ? ['sealed', '#2da44e'] : status === 'leaking' ? ['leaking', '#cf222e'] : ['inconclusive', '#9a6700'];
   const w = 70 + label.length * 7;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w + 62}" height="20" role="img" aria-label="crossleak: ${label}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w + 62}" height="20" role="img" aria-label="zelkaro: ${label}">
 <rect width="62" height="20" fill="#555"/><rect x="62" width="${w}" height="20" fill="${color}"/>
-<g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11"><text x="6" y="14">crossleak</text><text x="68" y="14">${label} · Kane CLI</text></g></svg>`;
+<g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11"><text x="6" y="14">zelkaro</text><text x="68" y="14">${label} · Kane CLI</text></g></svg>`;
 }
 
 function roundMd(r) {
@@ -44,9 +44,9 @@ ${f.diff.trim() || '(no diff captured)'}
 \`\`\`
 `).join('\n');
 
-  const md = `# Crossleak report
+  const md = `# Zelkaro report
 
-![crossleak](badge.svg)
+![zelkaro](badge.svg)
 
 **Target:** ${run.baseUrl} · **Final status:** ${final.status.toUpperCase()} · **Rounds:** ${run.rounds.length} · **Kane credits:** ${run.rounds.reduce((a, r) => a + r.credits, 0).toFixed(0)}
 
