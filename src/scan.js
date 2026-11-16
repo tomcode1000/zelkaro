@@ -29,7 +29,8 @@ function loginPhrase(cfg, actor) {
   // login silently turns a "second user" probe into a logged-out probe, and a
   // leak that only signed-in users can reach would be reported as sealed.
   const proof = user.signedInCheck || `the page shows you are signed in as ${user.username}`;
-  return `Log in at ${cfg.baseUrl}${cfg.loginPath} with username ${user.username} and password {{${key}_password}}. Verify that ${proof}.`;
+  // Explicit step order: Kane once hoisted the check above the login itself.
+  return `Step 1: on ${cfg.baseUrl}${cfg.loginPath}, type username ${user.username} and password {{${key}_password}} into the login form and submit it. Step 2: only after the form is submitted and the next page has loaded, verify that ${proof}. Step 3:`;
 }
 
 function variables(cfg) {
@@ -113,8 +114,14 @@ export async function scan(cfg, ctx) {
 
   // 1. Plant
   log(`plant: Kane signs in as the owner and creates a private ${cfg.resource} holding ${canary}`);
-  const plant = await kane(`${loginPhrase(cfg, OWNER)} ${cfg.plant.replaceAll('{canary}', canary)} Then store the full URL of the page that shows the saved ${cfg.resource} as {{planted_url}}.`, loginUrl);
-  const planted = findUrl(plant.end, origin);
+  const plantObjective = `${loginPhrase(cfg, OWNER)} ${cfg.plant.replaceAll('{canary}', canary)} Then store the full URL of the page that shows the saved ${cfg.resource} as {{planted_url}}.`;
+  let plant = await kane(plantObjective, loginUrl);
+  let planted = findUrl(plant.end, origin);
+  if (!planted) {
+    log('plant: no URL came back, retrying once');
+    plant = await kane(plantObjective, loginUrl);
+    planted = findUrl(plant.end, origin);
+  }
   result.checks.push({ id: 'plant', actor: OWNER, target: planted, expect: 'creates', verdict: planted ? 'ok' : 'error',
     detail: plant.end?.one_liner || 'no result', proof: proofOf(plant, 'plant'), testUrl: plant.end?.test_url || null });
   if (!planted) {
@@ -142,9 +149,17 @@ export async function scan(cfg, ctx) {
     for (const actor of [INTRUDER, ANON]) {
       const id = `${actor}:${new URL(t.url).pathname}`;
       log(`${id}: Kane as ${actor} opens ${t.url}`);
-      const res = await kane(`${loginPhrase(cfg, actor)} Then go to ${t.url} . Verify that the text '${canary}' is NOT visible anywhere on the page.`, actor === ANON ? t.url : loginUrl);
-      const proof = proofOf(res, id);
-      const v = readVerdict(res, canary, proof.steps);
+      const objective = `${loginPhrase(cfg, actor)} Then go to ${t.url} . Verify that the text '${canary}' is NOT visible anywhere on the page.`;
+      let res = await kane(objective, actor === ANON ? t.url : loginUrl);
+      let proof = proofOf(res, id);
+      let v = readVerdict(res, canary, proof.steps);
+      if (v.verdict === 'inconclusive') {
+        // One retry: a flaky sign-in should not cost a verdict.
+        log(`${id}: inconclusive (${v.detail}), retrying once`);
+        res = await kane(objective, actor === ANON ? t.url : loginUrl);
+        proof = proofOf(res, id);
+        v = readVerdict(res, canary, proof.steps);
+      }
       result.checks.push({ id, kind: 'read', actor, target: t.url, how: t.how, expect: 'hidden', ...v, proof, testUrl: res.end?.test_url || null });
       log(`${id}: ${v.verdict.toUpperCase()} - ${v.detail}`);
     }
@@ -165,9 +180,16 @@ export async function scan(cfg, ctx) {
   // 5. Owner control (also judges the tamper attempt)
   log(`owner-control: Kane as ${OWNER} opens ${planted}`);
   const ownerAsserts = (tamperToken ? `Verify that the text '${tamperToken}' is NOT visible anywhere on the page. ` : '') + `Verify that the text '${canary}' IS visible on the page.`;
-  const ownerRes = await kane(`${loginPhrase(cfg, OWNER)} Then go to ${planted} . ${ownerAsserts}`, loginUrl);
-  const ownerProof = proofOf(ownerRes, 'owner-control');
-  const ov = ownerVerdict(ownerRes, canary, tamperToken, ownerProof.steps);
+  const ownerObjective = `${loginPhrase(cfg, OWNER)} Then go to ${planted} . ${ownerAsserts}`;
+  let ownerRes = await kane(ownerObjective, loginUrl);
+  let ownerProof = proofOf(ownerRes, 'owner-control');
+  let ov = ownerVerdict(ownerRes, canary, tamperToken, ownerProof.steps);
+  if (ov.owner.verdict === 'inconclusive') {
+    log(`owner-control: inconclusive (${ov.owner.detail}), retrying once`);
+    ownerRes = await kane(ownerObjective, loginUrl);
+    ownerProof = proofOf(ownerRes, 'owner-control');
+    ov = ownerVerdict(ownerRes, canary, tamperToken, ownerProof.steps);
+  }
   result.checks.push({ id: 'owner-control', kind: 'control', actor: OWNER, target: planted, expect: 'visible', ...ov.owner, proof: ownerProof, testUrl: ownerRes.end?.test_url || null });
   log(`owner-control: ${ov.owner.verdict.toUpperCase()} - ${ov.owner.detail}`);
   if (tamperCheck) {
