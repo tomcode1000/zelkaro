@@ -6,6 +6,8 @@ import path from 'node:path';
 import { scan } from '../src/scan.js';
 import { buildFixPrompt, runAgent, gitDiff } from '../src/agent.js';
 import { writeReport } from '../src/report.js';
+import { appManager } from '../src/app.js';
+import { KaneAuthError } from '../src/kane.js';
 
 const argv = process.argv.slice(2);
 const cmd = argv[0];
@@ -74,7 +76,10 @@ function restoreTampered(before) {
 }
 const run = { tool: 'zelkaro', baseUrl: cfg.baseUrl, resource: cfg.resource, startedAt: new Date().toISOString(), rounds: [], fixes: [] };
 
+const app = appManager(cfg, cwd, (s) => log(s));
+
 async function main() {
+  await app.start();
   const maxRounds = cmd === 'heal' ? Number(flag('max-rounds', 3)) : 1;
   for (let round = 1; round <= maxRounds; round++) {
     log(`\n=== Round ${round}: Kane scan of ${cfg.baseUrl}`);
@@ -95,7 +100,11 @@ async function main() {
     run.fixes.push({ round, agent: cfg.agent?.name || 'Claude Code', prompt, reply: res.reply || res.stderr || `(agent exited ${res.code})`, diff, tampered });
     log(`agent: ${res.reply.split('\n').slice(-3).join(' ')}`);
     writeReport(outDir, run);
+    // The agent may have changed server code that only loads at startup.
+    if (app.managed) await app.restart();
+    else log('note: if the agent changed code your app only loads at startup, restart the app (or set "app.start" in the config so Zelkaro does it).');
   }
+  await app.stop();
   run.finishedAt = new Date().toISOString();
   const report = writeReport(outDir, run);
   const final = run.rounds.at(-1);
@@ -104,4 +113,10 @@ async function main() {
   process.exit(final.status === 'sealed' ? 0 : final.status === 'leaking' ? 1 : 2);
 }
 
-main().catch((e) => { console.error(e); process.exit(3); });
+main().catch(async (e) => {
+  await app.stop().catch(() => {});
+  if (run.rounds.length) writeReport(outDir, run);
+  if (e instanceof KaneAuthError) { console.error(`\nzelkaro: ${e.message}`); process.exit(4); }
+  console.error(e);
+  process.exit(3);
+});

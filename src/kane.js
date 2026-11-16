@@ -32,6 +32,11 @@ export async function runKane(objective, opts) {
   for (let attempt = 1; ; attempt++) {
     const res = await runOnce(objective, opts);
     await sleep(5000);
+    // An expired login fails every remaining run. Stop the scan and say so
+    // instead of burning through the rest of the checks.
+    if (!res.end && /token refresh failed|run: kane-cli login|not authenticated/i.test(res.stderr)) {
+      throw new KaneAuthError('Kane CLI login expired. Run `kane-cli login` (or `kane-cli login --username <u> --access-key <key>` for long runs), then run Zelkaro again.');
+    }
     const transient = !res.end && /must be configured|lock/i.test(res.stderr);
     if (!transient || attempt >= 8) return res;
     opts.log?.(`kane not ready (transient), retrying in ${attempt * 15}s`);
@@ -40,6 +45,8 @@ export async function runKane(objective, opts) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export class KaneAuthError extends Error {}
 
 function runOnce(objective, opts) {
   const { cmd, pre } = kaneCommand();

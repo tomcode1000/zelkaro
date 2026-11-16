@@ -79,7 +79,7 @@ function readVerdict(res, canary, steps) {
 
 function ownerVerdict(res, canary, tamperToken, steps) {
   const end = res.end;
-  if (!end) return { owner: noResult(res), tamper: null };
+  if (!end) return { owner: noResult(res), tamper: tamperToken ? 'inconclusive' : null };
   if (end.status === 'passed') return { owner: { verdict: 'ok', detail: end.one_liner || end.summary }, tamper: tamperToken ? 'blocked' : null };
   const failed = failedAssert(steps, end);
   if (String(end.reason_code || '').startsWith('assertion_error')) {

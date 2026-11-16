@@ -26,7 +26,7 @@ let seq = 100;
 function seed() {
   const add = (owner, title, body) => {
     const id = String(++seq);
-    notes.set(id, { id, owner, title, body });
+    notes.set(id, { id, owner, title, body, activity: [] });
   };
   add('u_alice', 'Grocery list', 'eggs, oat milk, coffee');
   add('u_bob', 'Gym plan', 'push / pull / legs');

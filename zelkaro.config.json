@@ -1,6 +1,7 @@
 {
   "baseUrl": "http://localhost:3000",
   "loginPath": "/login",
+  "app": { "start": "node demo/server.js", "healthUrl": "http://localhost:3000/health" },
   "resource": "note",
   "users": {
     "owner": { "username": "alice", "password": "alice123" },
