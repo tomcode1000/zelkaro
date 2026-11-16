@@ -105,9 +105,17 @@ export async function scan(cfg, ctx) {
   const loginUrl = cfg.baseUrl + cfg.loginPath;
   const result = { label: ctx.label, canary, tamperToken, startedAt: new Date().toISOString(), plantedUrl: null, discovered: [], checks: [], credits: 0 };
   let n = 0;
+  // A Kane run that crashed (no run_end, or an infra_error such as the browser
+  // closing) tells us nothing either way. Retry it up to twice.
+  const crashed = (res) => !res.end || String(res.end.reason_code || '').startsWith('infra_error');
   const kane = async (objective, url) => {
-    const res = await runKane(objective, { url, variables: vars, log: (s) => log('  kane> ' + s) });
-    result.credits += res.end?.credits_consumed || 0;
+    let res;
+    for (let i = 0; i < 3; i++) {
+      if (i) log(`  kane run crashed (${res.end?.reason_code || 'no result'}), retrying`);
+      res = await runKane(objective, { url, variables: vars, log: (s) => log('  kane> ' + s) });
+      result.credits += res.end?.credits_consumed || 0;
+      if (!crashed(res)) break;
+    }
     return res;
   };
   const proofOf = (res, id) => (res.pack ? extractProof(res.pack, shotDir, `${ctx.label}-${n++}-${id.replace(/[^a-z0-9-]+/gi, '_')}`) : { shots: [], steps: [] });
@@ -173,7 +181,9 @@ export async function scan(cfg, ctx) {
     log(`${id}: Kane as ${INTRUDER} tries to overwrite the ${cfg.resource} at ${target}`);
     const action = cfg.tamper.action.replaceAll('{tamper}', tamperToken);
     const res = await kane(`${loginPhrase(cfg, INTRUDER)} Then go to ${target} . If a form to change the ${cfg.resource} is shown: ${action} If you get an error or a not-found page instead, stop there.`, loginUrl);
-    tamperCheck = { id, kind: 'tamper', actor: INTRUDER, target, how: 'configured', expect: 'unchanged', verdict: 'pending', detail: res.end?.one_liner || 'no result', proof: proofOf(res, id), testUrl: res.end?.test_url || null };
+    // If the attack itself never finished, the owner seeing an untouched record
+    // proves nothing: it must not be reported as "blocked".
+    tamperCheck = { id, kind: 'tamper', actor: INTRUDER, target, how: 'configured', expect: 'unchanged', verdict: 'pending', ran: !crashed(res), detail: res.end?.one_liner || 'no result', proof: proofOf(res, id), testUrl: res.end?.test_url || null };
     result.checks.push(tamperCheck);
   }
 
@@ -193,7 +203,8 @@ export async function scan(cfg, ctx) {
   result.checks.push({ id: 'owner-control', kind: 'control', actor: OWNER, target: planted, expect: 'visible', ...ov.owner, proof: ownerProof, testUrl: ownerRes.end?.test_url || null });
   log(`owner-control: ${ov.owner.verdict.toUpperCase()} - ${ov.owner.detail}`);
   if (tamperCheck) {
-    tamperCheck.verdict = ov.tamper;
+    tamperCheck.verdict = ov.tamper === 'blocked' && !tamperCheck.ran ? 'inconclusive' : ov.tamper;
+    if (tamperCheck.verdict === 'inconclusive' && !tamperCheck.ran) tamperCheck.detail = `Kane's tamper attempt crashed before finishing, so this proves nothing: ${tamperCheck.detail}`;
     if (ov.tamper === 'tampered') tamperCheck.detail = `the owner's ${cfg.resource} now shows ${tamperToken}: ${ov.detail}`;
     log(`${tamperCheck.id}: ${String(ov.tamper).toUpperCase()} - ${tamperCheck.detail}`);
   }
