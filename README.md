@@ -2,7 +2,7 @@
 
 ![zelkaro](docs/proof/badge.svg)
 
-**Your AI-built app lets users read each other's data. Zelkaro proves it in a real browser with Kane CLI, hands the evidence to your coding agent, and doesn't call it fixed until Kane proves the leak is gone.**
+**Give it two logins. Kane CLI maps every route your app uses for a user's private data, attacks each one as a second user and as a logged-out visitor, tries to overwrite the data, hands the evidence to your coding agent, and won't say "sealed" until Kane proves it in a real browser.**
 
 Built for the [Kane CLI Online Hackathon](https://www.kaneclihack.sh/) (12–19 Nov 2026).
 
@@ -10,108 +10,157 @@ Built for the [Kane CLI Online Hackathon](https://www.kaneclihack.sh/) (12–19 
 
 ## The problem (with receipts)
 
-Broken access control is the bug vibe-coded apps ship most, and it's invisible until someone else logs in.
+Broken access control is the bug that keeps leaking AI-built apps, and it's invisible until someone else logs in.
 
 - **170 of 1,645 apps built with Lovable (10.3%) exposed other users' data**: names, emails, financial data, API keys. The cause was missing row-level security. Tracked as **CVE-2025-48757**. ([source](https://superblocks.com/blog/lovable-vulnerabilities))
 - A single Lovable-showcased app **exposed 18,000 users**. ([source](https://news.lavx.hu/article/ai-generated-app-exposes-18-000-users-data-raising-questions-about-vibe-coding-security))
 - A later Lovable access-control flaw stayed open **for 48 days** after it was reported. ([source](https://thenextweb.com/news/lovable-vibe-coding-security-crisis-exposed))
 - Veracode found AI-generated code introduces a security flaw in **45% of tasks**. ([source](https://www.veracode.com/press-release/ai-generated-code-poses-major-security-risks-in-nearly-half-of-all-development-tasks-veracode-research-reveals/))
-- 66% of developers say AI code is "almost right, but not quite". ([Stack Overflow 2025](https://stackoverflow.blog/2025/12/29/developers-remain-willing-but-reluctant-to-use-ai-the-2025-developer-survey-results-are-here/))
 
-Static scanners read code. This bug only exists at runtime: **user B signs in and sees user A's row.** That takes a real browser and two real accounts. That's what Kane CLI is for.
+Static scanners read code. This bug only exists at runtime: **user B signs in and sees, or changes, user A's row.** Finding it takes a real browser, two real accounts, and knowing every route that touches the data. The routes people forget are where it hides.
 
 ## What Zelkaro does
 
 ```
-            ┌────────────────────────── zelkaro heal ──────────────────────────┐
-            │                                                                  │
-  1 PLANT   │  Kane signs in as user 1, creates a private record holding a     │
-            │  random canary (CANARY-xxxxxxxx), and reports its URL            │
-  2 CONTROL │  Kane, as user 1, confirms the canary IS visible                 │
-  3 PROBE   │  Kane, as user 2 and as a logged-out visitor, opens the page URL │
-            │  and the API URL and asserts the canary is NOT visible           │
-            │                                                                  │
-            │        leak? ──► evidence (Kane verdict + screenshot) ──► Claude Code
-            │                                                    patches the auth rule
-            │        ◄──────────── fresh canary, scan again ◄───────────────┘  │
-            │                                                                  │
-            │  SEALED only when every probe is blocked AND the owner still     │
-            │  has access. Denying everyone does not pass.                     │
-            └──────────────────────────────────────────────────────────────────┘
+  zelkaro heal
+  │
+  ├─ 1 PLANT     Kane signs in as user 1 and creates a private record holding a
+  │              random canary (CANARY-xxxxxxxx). Kane reports its URL.
+  │
+  ├─ 2 DISCOVER  Zelkaro reads the network log (HAR) inside Kane's evidence pack:
+  │              every page and background API call that carried the record's id
+  │              or returned the canary becomes an attack target. No route list.
+  │
+  ├─ 3 PROBE     Kane, as user 2 and as a logged-out visitor, opens every target
+  │              and asserts the canary is NOT visible.
+  │
+  ├─ 4 TAMPER    Kane, as user 2, tries to overwrite the record with TAMPERED-xxxx.
+  │
+  ├─ 5 CONTROL   Kane, as user 1, checks the record is untouched AND still visible.
+  │              "Deny everyone" does not pass.
+  │
+  ├─ leaks? ──► Kane's verdicts + screenshots ──► Claude Code patches the code
+  │             Zelkaro restarts the app, plants a FRESH canary, scans again
+  │
+  └─ SEALED only when every probe is blocked, the tamper failed, and the owner
+     still has full access.
 ```
 
-- **Every verdict comes from Kane** driving real Chrome. Zelkaro never decides a leak by itself.
+- **Every verdict comes from Kane** driving real Chrome. Zelkaro never decides a leak itself.
+- **The attack surface comes from Kane's own network capture**, so it includes background API routes nobody remembered to list.
 - **A new canary every round**, so a fix can't pass by special-casing one record.
-- **The owner-control check** keeps the agent honest. "Return 403 for everyone" gets flagged as `owner-locked-out`.
-- **Proof is extracted from Kane's sealed evidence packs**: the screenshot at the step that decided each verdict, plus a link to the Kane run in Test Manager.
+- **Guardrails on the agent:** a failed sign-in never counts as "blocked"; the agent can't edit the config or Zelkaro itself (changes are reverted and recorded); Kane's text is passed to the agent as untrusted data.
+- **Proof is pulled from Kane's sealed evidence packs**: the screenshot at the step that decided each verdict, plus a link to every Kane run.
 
-## Proof: Kane caught 4 leaks, Claude fixed them, Kane proved it
+## The real run
 
-Full machine-written report from the run below: [docs/proof/REPORT.md](docs/proof/REPORT.md)
+This is one unattended `zelkaro heal` on the demo app, Notely, with nothing edited afterwards. It took 54 minutes and 449 Kane credits and ran 18+ real Kane browser sessions. Full report: [docs/proof/REPORT.md](docs/proof/REPORT.md). Every "run" link opens that Kane session in TestMu AI's Test Manager.
 
-Real run on 2026-11-15. Round 1 canary `CANARY-ebda5238`, round 2 canary `CANARY-bb12566e`. Kane runs: 12. Credits: 225.
+**Kane planted `CANARY-25c594d5` in Alice's note, then discovered 3 routes from its own network log**, including `/api/notes/:id/activity`, a background route nobody listed in the config.
 
-| Check | Round 1 (before fix) | Round 2 (after fix) |
+| Who | Tried to | Round 1 (before) | Round 2 (after Claude's fix) |
+|---|---|---|---|
+| Bob (2nd user) | read `/notes/103` | 🔴 **LEAK** · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MT4M15QKXRSGY0YGYSS3AF/dashboard/share/US_SZ4ESPPF0VVG1MIGAFFN6P9H3SXS7DTCWN93V8JRYMZQX7GLVE7HF9RUHHYFG2XS?type=summary&agentView=true&fqdn=summary-page) | 🟢 blocked · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MVW4HXY2W7P88QK7CWM2HN/dashboard/share/US_CLO6BLDJFIIDE9P8TW98RODY3JAK4CXJ7NQQKHP142TC5GCD2K4Y79VXS4NM9WG5?type=summary&agentView=true&fqdn=summary-page) |
+| logged-out visitor | read `/notes/103` | 🔴 **LEAK** · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MT8WE8GJXRHY2N43CPQKT4/dashboard/share/US_QKGFKJOEUNMWTI6MQP44RYCGTHLNALQO6RHI1ONWEH4LHQBNS3WNSS3K0P2M5U3S?type=summary&agentView=true&fqdn=summary-page) | 🟢 blocked · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MW230PNRRADXKD8NQCZKQT/dashboard/share/US_Y44YJN6TVOSB3423RM2QD1UCFFRA6LYWRF5INM7W9E3R8RT7PT2LU6Z0YOUNLSKG?type=summary&agentView=true&fqdn=summary-page) |
+| Bob (2nd user) | read `/api/notes/103` *(found in Kane's network log)* | 🔴 **LEAK**  | 🟢 blocked · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MW78B15DC51YV7N1X7TD9M/dashboard/share/US_JM6HCTPY0YCPDZBIQJ85BMH3NMYL3IYH6DCKSSY8WL7H27SDE5N7952CW8RUHLLW?type=summary&agentView=true&fqdn=summary-page) |
+| logged-out visitor | read `/api/notes/103` *(found in Kane's network log)* | 🔴 **LEAK** · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MTS9R1C0T9N0CR9QGRJ8RP/dashboard/share/US_NHIT72GD7D2KK4K1VIXE3XIP9P2LC5FVUBLD41KACOIQWG2WN3YNJNDEP3CDH2EJ?type=summary&agentView=true&fqdn=summary-page) | 🟢 blocked · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MWDNNBB7KTYM1ESB0PT552/dashboard/share/US_ZI6627382GVZ860C19FIB65W4OPYM50NYIPDM1SL6B21S0GFJM9W0H2TZF0W143W?type=summary&agentView=true&fqdn=summary-page) |
+| Bob (2nd user) | read `/api/notes/103/activity` *(found in Kane's network log)* | 🔴 **LEAK** · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MTX0A96FT2SXHKHW1VVV0J/dashboard/share/US_FWCVZBXTJM0ZQ51ROZ54XPI5VXX9HBG56FTK96KPG9J4ON4BGB3GAR751RGCS37V?type=summary&agentView=true&fqdn=summary-page) | 🟢 blocked · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MWGB5NHWJ89JEBF3NHJQCB/dashboard/share/US_Z0DF1AZKZ5FA363E3L54UP9F8XGAQ6FU1Y5XTWCB7EOGMY1QEYWSUP4SF5F5O0IQ?type=summary&agentView=true&fqdn=summary-page) |
+| logged-out visitor | read `/api/notes/103/activity` *(found in Kane's network log)* | 🔴 **LEAK** · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MV1NZ609XJMPZ5EJYERTP3/dashboard/share/US_HQE6JP4CAR6XDOKM52RHTLQ9279K2T6I9E9JBOFMW1Z4YFEJWP3RHMR3UGV03K95?type=summary&agentView=true&fqdn=summary-page) | 🟢 blocked · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MWMQ7F9Q5SCMCH87K618KS/dashboard/share/US_VY0QWKO0MATHGBLORU8NZWEPF6WFQMTGO5P06ZL5J0O9UZ546EJZWOUR4QIYLBC7?type=summary&agentView=true&fqdn=summary-page) |
+| Bob (2nd user) | overwrite `/notes/103/edit` | 🔴 **TAMPERED** · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MV4VEFD6BAHCSZZRE96WF3/dashboard/share/US_ZY5S2KD2JKCLPBOVLP83QLDRWY8Z7B98PHLU5POHW16T09W49I4RRPE4F7TCX6DU?type=summary&agentView=true&fqdn=summary-page) | 🟢 blocked · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MWQ29BJM9FEVV0WZ8W9PHM/dashboard/share/US_T0S5C8LO88EZ6NL09VNSK86H8QC0MLO7S1WP3328A78VOUYEWBYGQ6VFVX095LCG?type=summary&agentView=true&fqdn=summary-page) |
+| Alice (owner) | open own note `/notes/103` | 🟢 owner OK · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MVCMA1HZVDVGZ76NKW2VFE/dashboard/share/US_206NIYB7I3UI8BI0G7QXAHMXR0LTJPXMJ8IK7DSVD2JAW8QHH2M0BJWCTF8SUJ63?type=summary&agentView=true&fqdn=summary-page) | 🟢 owner OK · [run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7MWWV5R221A697Q7MPKWNR4/dashboard/share/US_K0Z3IELLE9V8S4INHKA4ANXV80SKA1NRJ77H2W4CNNSEOTEDGY6ARU4VTG31A3T5?type=summary&agentView=true&fqdn=summary-page) |
+
+**Round 1: 7 leaks → Claude Code patched once → Round 2 (fresh canary `CANARY-79b701e9`): SEALED**, and Alice still has full access.
+
+### What Kane saw
+
+| Bob opens Alice's note (round 1) | Logged-out visitor, hidden `/activity` API (round 1) |
+|---|---|
+| ![](docs/proof/screenshots/round-1-1-intruder_notes_103.jpg) | ![](docs/proof/screenshots/round-1-6-anonymous_api_notes_103_activity.jpg) |
+| Kane: *"Bob can open note 103 and see the payroll canary text even though it was expected to be hidden."* | Kane: *"The check failed because note 103 already contains the canary marker in its activity data."* |
+
+| Bob overwrote it: Alice's own view (round 1) | Bob after the fix (round 2) | Alice after the fix (round 2) |
 |---|---|---|
-| Plant: Kane signs in as alice and creates the secret | ✅ OK · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7FZV69HHMRG9T02FWKWAJHK/dashboard/share/US_C4U4NE2VAW2Y5FT0VKY7Q5KM0874V8KOF35L4GTD45VEOWEYQR7YUR8FQIHIIY0R?type=summary&agentView=true&fqdn=summary-page) | ✅ OK · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0A50MCCEY0G4V4S0W50JY/dashboard/share/US_3VBD14XRFYRGB5PYPML4JBZ1GVZKBQC2H4OPXYJ7L3Q0G5ZAYLTVY26Z9ZQEO3W4?type=summary&agentView=true&fqdn=summary-page) |
-| Owner control: alice opens her own note | ✅ OK · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7FZY2XEP21RA1ZAF68266KB/dashboard/share/US_B63L5AFHVNUHTMUWQ5JIO25TBAOZ9EQR41SGGGNE5GNDAQMLECX57LGQC750REZ0?type=summary&agentView=true&fqdn=summary-page) | ✅ OK · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0CZ73BKEVX3NWCFKZPZH4/dashboard/share/US_RXJGYZC14ZF995WGUZ7SMFLH1SHEZ0HC4SX5YUCHOB9GAJQUL9EPNB3GKAHPS4IG?type=summary&agentView=true&fqdn=summary-page) |
-| bob opens the note page | 🔴 LEAK · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G00SR6E6RHQNEMHHJVN40H/dashboard/share/US_Q7AD69GUE0I16WLWLP888SDJ7VKRS9TQLIDTF35W1D5JR3EIGAIT411EEISM7M6X?type=summary&agentView=true&fqdn=summary-page) | ✅ Blocked · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0FFCW6VH9TEQGSQRW6SYV/dashboard/share/US_6KHG6UMBYKMHCYBDEUH6HSOFS7OB5LZLGRRAAECI7TWO25MO0RVWA126MYTV97GI?type=summary&agentView=true&fqdn=summary-page) |
-| bob opens the note API | 🔴 LEAK · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G039GAQMYV7JJKEP6H36JR/dashboard/share/US_KYSHXDU1SLFC8ICA3793S3JJOT1L83PHFTKMOPUN8PHBGWDB3UTMRYR1YXE4LORQ?type=summary&agentView=true&fqdn=summary-page) | ✅ Blocked · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0J94EYZV0G25P54SFYBQ3/dashboard/share/US_GSL53A4PM0JCNKBJ2BBUBWJRGA2LJ8VVC2MKHGX962THJ4T3ALHAJDKN9CTG7CX3?type=summary&agentView=true&fqdn=summary-page) |
-| Logged-out visitor opens the note page | 🔴 LEAK · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G066RWC1FP8B2F6YWTYQB4/dashboard/share/US_BG8IT1CU921G4ZS96L3CM4ENXGDMS21IT4COZFS50HM1OEFYMFE11R5SESZFTEJ0?type=summary&agentView=true&fqdn=summary-page) | ✅ Blocked · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0MREEPNKSZ9A21NZZVPV3/dashboard/share/US_MI9J2HUQDCR9GFP1SQIKNQOLQ4GVIJGFB9ZI7PYBFMQJPGAAZFGGKXJHH8XASH5C?type=summary&agentView=true&fqdn=summary-page) |
-| Logged-out visitor opens the note API | 🔴 LEAK · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G07NKQWV656JJKJ9GJ50XN/dashboard/share/US_L53SF7P0W60VIU6FV3IMEXFJZ7DD4HTPG056GL6PWM9P9R2CZMX1K8JXIW0KEZU2?type=summary&agentView=true&fqdn=summary-page) | ✅ Blocked · [Kane run](https://test-manager.lambdatest.com/projects/01M7FW9729F8D06CJ58Y6NQ70G/test-cases/01M7G0P9GE1GA5NQZGY3536A7X/dashboard/share/US_HAMTEO7EHAXILG9I02MY6Y1N7AY0FM46W3NQRNHS72YL3Z42PT7JQU6ZK07AHHBL?type=summary&agentView=true&fqdn=summary-page) |
+| ![](docs/proof/screenshots/round-1-8-owner-control.jpg) | ![](docs/proof/screenshots/round-2-1-intruder_notes_103.jpg) | ![](docs/proof/screenshots/round-2-8-owner-control.jpg) |
+| "edited by bob": Kane caught `TAMPERED-85d8a34e` | Note not found | Her note, intact |
 
-### Round 1: what Kane saw (before the fix)
+All 18 screenshots are in [docs/proof/screenshots](docs/proof/screenshots/). Each is the frame from Kane's evidence pack at the step that decided the verdict.
 
-**🔴 bob opens the note page** (`http://localhost:3000/notes/107`)
+### What Claude Code did with Kane's findings
 
-> Kane: "Bob can open note 107 and see the protected CANARY text when it should not be visible."
+Zelkaro sent Claude Code Kane's verdicts, Kane's own explanations, the discovered routes and the screenshot paths (full prompt in the report). Claude replied:
 
-<img src="docs/proof/screenshots/round-1-2-intruder-page.jpg" width="720" alt="intruder-page round 1">
+> The policies in `demo/policies.js` never checked who owned a note: `canReadNote` returned `true` for everyone and `canWriteNote` let any signed-in user edit. On top of that, the `/api/notes/:id/activity` route in `demo/server.js` skipped the policy entirely, and its edit snapshots contain the note body. I changed both policies so only the signed-in user whose id matches `note.owner` can read or write the note, and made the activity route use `canReadNote`, so `/notes/103`, `/notes/103/edit` (GET and POST), `/api/notes/103` and `/api/notes/103/activity` all return not-found for anyone but the owner. I haven't tested this live: my commands to start the app on a spare port were blocked, so Kane's re-run will be the first check that alice can still read and edit her note.
 
-**🔴 bob opens the note API** (`http://localhost:3000/api/notes/107`)
-
-> Kane: "While signed in as bob, the page exposed the canary text from note 107, which belongs to alice."
-
-<img src="docs/proof/screenshots/round-1-3-intruder-api.jpg" width="720" alt="intruder-api round 1">
-
-**🔴 Logged-out visitor opens the note page** (`http://localhost:3000/notes/107`)
-
-> Kane: "The page shows the protected CANARY text even though the visitor did not log in."
-
-<img src="docs/proof/screenshots/round-1-4-anonymous-page.jpg" width="720" alt="anonymous-page round 1">
-
-**🔴 Logged-out visitor opens the note API** (`http://localhost:3000/api/notes/107`)
-
-> Kane: "The page exposes the canary text without logging in, so the required absence check correctly failed."
-
-<img src="docs/proof/screenshots/round-1-5-anonymous-api.jpg" width="720" alt="anonymous-api round 1">
-
-### The fix Claude Code wrote from Kane's evidence
-
-> The leak came from `canReadNote()` in `demo/policies.js`: it returned `true` for everyone, so Bob and logged-out visitors could read Alice's note on both `/notes/:id` and `/api/notes/:id`, since both routes use that one check. I changed it to return true only when a user is signed in and their `user.id` matches the note's `owner`, which keeps Alice's access and denies everyone else — I haven't re-run Kane yet, but the server reloads `policies.js` on each request, so a re-scan should pick up the fix with no restart.
+<details><summary>Claude's patch (git diff)</summary>
 
 ```diff
 diff --git a/demo/policies.js b/demo/policies.js
-index 7fcd77b..9782947 100644
 --- a/demo/policies.js
 +++ b/demo/policies.js
-@@ -11,5 +11,7 @@
+@@ -1,10 +1,10 @@
+ // Row-level access rules for Notely.
+ //
+ // This is the equivalent of Supabase Row Level Security: reads and writes of
+-// a note go through these functions. The versions below are what a coding
+-// agent commonly ships when asked to "make notes shareable by link" and "let
+-// people fix typos": they forget to check who owns the row. CVE-2025-48757 was
+-// this same class of bug.
++// a note go through these functions. A note is private to its owner: only the
++// signed-in user whose id matches note.owner may read or change it.
++
++const isOwner = (user, note) => Boolean(user && note && user.id && user.id === note.owner);
+ 
+ /**
+  * @param {{id:string,name:string}|null} user  the signed-in user, or null
+@@ -12,10 +12,10 @@
   * @returns {boolean}
   */
  export function canReadNote(user, note) {
 -  return true;
-+  // Only the owner may read a note. Anonymous visitors (user === null) and
-+  // any other signed-in user are denied.
-+  return Boolean(user && note && user.id === note.owner);
++  return isOwner(user, note);
  }
+ 
+-/** Signed-in users can edit notes. */
++/** Only the owner can edit a note. */
+ export function canWriteNote(user, note) {
+-  return Boolean(user);
++  return isOwner(user, note);
+ }
+diff --git a/demo/server.js b/demo/server.js
+--- a/demo/server.js
++++ b/demo/server.js
+@@ -137,13 +137,13 @@ ${mine.map((n) => `<div class="card"><a href="/notes/${n.id}">${esc(n.title)}</a
+       return json(200, pub);
+     }
+ 
+-    // Activity feed added later for the "last edited" panel. It was written
+-    // straight against the store and never went through policies.js: the kind
+-    // of forgotten route nobody lists in a test plan.
++    // Activity feed for the "last edited" panel. Its snapshots contain the note
++    // body, so it goes through the same read policy as the note itself.
+     m = p.match(/^\/api\/notes\/(\d+)\/activity$/);
+     if (m) {
+       const note = notes.get(m[1]);
+-      if (!note) return json(404, { error: 'not found' });
++      const { canReadNote } = await policies();
++      if (!note || !canReadNote(user, note)) return json(404, { error: 'not found' });
+       return json(200, { noteId: note.id, events: note.activity });
+     }
 ```
+</details>
 
-### Round 2: what Kane saw (after the fix)
+Claude couldn't test its own fix, so **Kane's round 2 was the only judge**: a new canary, the same attacks, every one blocked, and the owner check passed.
 
-<table><tr><td width="50%"><b>✅ OK: Owner control: alice opens her own note</b><br><img src="docs/proof/screenshots/round-2-1-owner-control.jpg" alt="owner-control round 2"></td><td width="50%"><b>✅ Blocked: bob opens the note page</b><br><img src="docs/proof/screenshots/round-2-2-intruder-page.jpg" alt="intruder-page round 2"></td></tr><tr><td width="50%"><b>✅ Blocked: bob opens the note API</b><br><img src="docs/proof/screenshots/round-2-3-intruder-api.jpg" alt="intruder-api round 2"></td><td width="50%"><b>✅ Blocked: Logged-out visitor opens the note API</b><br><img src="docs/proof/screenshots/round-2-5-anonymous-api.jpg" alt="anonymous-api round 2"></td></tr></table>
+## We tried to make AI write this bug. It didn't.
 
-The owner still sees her note. bob and logged-out visitors get "Note not found" / `{"error":"not found"}`. Every screenshot above was pulled from Kane's sealed evidence pack for that run, at the step that decided the verdict. Each "Kane run" link opens the run in LambdaTest Test Manager.
+We wanted to know if today's coding agents still ship this bug on their own, so we asked a fresh Claude Code session, outside this repo and with no hint about security, to build the same multi-user notes app twice:
 
+- **A:** "Each user has their own private notes", with a page and a JSON API per note.
+- **B:** same, plus "users can share a note with a friend by sending them the note's link". That's the feature request that usually opens the hole.
+
+Both apps were secure. In B, the agent noticed that `/notes/1` links would expose every note and used random share tokens instead. The prompts, generated code and build logs are in [`experiments/`](experiments/).
+
+So we don't claim "AI always writes leaky code". Frontier agents get the simple case right. The leaks in the wild come from places a code-writing agent can't see or doesn't touch: database rules switched off in a dashboard (CVE-2025-48757), routes added later that skip the shared check (the `/activity` route in our demo), older generated code, and edits by people. **Zelkaro doesn't predict leaks. It proves, from outside, in a real browser, that there aren't any**, and gives you the screenshots to show for it.
 
 ## Quick start (about 2 minutes)
 
@@ -119,88 +168,85 @@ Requirements: Node 18+, [Kane CLI](https://www.testmuai.com/support/docs/kane-cl
 
 ```bash
 npm install -g @testmuai/kane-cli
-kane-cli login --oauth
+kane-cli login --oauth          # for long runs: kane-cli login --username <u> --access-key <key>
 
 git clone https://github.com/tomcode1000/zelkaro && cd zelkaro
 
-# terminal 1: the deliberately leaky demo app (zero dependencies)
-npm run demo                      # http://localhost:3000  users: alice/alice123, bob/bob123
-
-# terminal 2
-node bin/zelkaro.js scan        # Kane finds the leaks, exits 1
+node bin/zelkaro.js scan        # starts the leaky demo app, Kane finds the leaks, exits 1
 node bin/zelkaro.js heal        # Kane finds them, Claude fixes them, Kane proves it, exits 0
 ```
 
-The report lands in `zelkaro-report/REPORT.md` with every screenshot.
+Zelkaro starts and restarts the demo app itself (`app.start` in the config). The report lands in `zelkaro-report/REPORT.md` with every screenshot. To reset the demo after `heal`: `git checkout demo/`.
 
-To reset the demo: `git checkout demo/policies.js`.
+### For judges
+
+- **No paid service or private login is needed.** The demo app runs locally, and its two test accounts are in [`zelkaro.config.json`](zelkaro.config.json): `alice` / `alice123` (owner) and `bob` / `bob123` (second user).
+- `scan` needs only Node 18+ and a Kane CLI login (the free TestMu AI credits are plenty; one round is about 200 credits).
+- `heal` also needs [Claude Code](https://claude.com/claude-code) signed in. You can swap in another agent with `agent.command`.
+- **Fallback recording:** if Kane or the agent can't run on your machine, [`docs/proof/`](docs/proof/) holds the full recorded run: the report, every screenshot, Claude's diff, and links to every Kane run in TestMu's Test Manager.
 
 ## Use it on your own app
-
-Edit `zelkaro.config.json`:
 
 ```json
 {
   "baseUrl": "http://localhost:3000",
   "loginPath": "/login",
-  "resource": "note",
+  "app": { "start": "npm run dev", "healthUrl": "http://localhost:3000/health" },
+  "resource": "invoice",
   "users": {
-    "owner":    { "username": "alice", "password": "alice123" },
-    "intruder": { "username": "bob",   "password": "bob123" }
+    "owner":    { "username": "alice@test.dev", "password": "..." },
+    "intruder": { "username": "bob@test.dev",   "password": "..." }
   },
-  "plant": "Create a new note with title 'Payroll' and body '{canary} salary 98000'. Save it.",
-  "probes": [
-    { "id": "intruder-page",  "actor": "intruder",  "url": "{url}" },
-    { "id": "intruder-api",   "actor": "intruder",  "url": "{origin}/api/notes/{id}" },
-    { "id": "anonymous-page", "actor": "anonymous", "url": "{url}" },
-    { "id": "anonymous-api",  "actor": "anonymous", "url": "{origin}/api/notes/{id}" }
-  ],
-  "agent": { "name": "Claude Code", "hint": "Authorization for notes lives in demo/policies.js." }
+  "plant": "Create a new invoice with the note '{canary}'. Save it.",
+  "autoDiscover": true,
+  "tamper": { "url": "{origin}/invoices/{id}/edit", "action": "Replace the note with '{tamper}' and save it." },
+  "agent": { "name": "Claude Code", "hint": "Authorization lives in src/policies.ts" }
 }
 ```
 
-- `plant` is plain English. Kane figures out the UI. `{canary}` is replaced with a fresh token.
-- Probe URLs use `{url}` (the planted page), `{origin}`, and `{id}` (the last path segment).
-- `agent.command` swaps Claude Code for any agent that reads a prompt on stdin (Codex, Gemini CLI, Aider...).
-- Passwords are sent to Kane as **secret variables**, never inside the objective text.
+- `plant` and `tamper.action` are plain English. Kane figures out the UI.
+- `autoDiscover` turns Kane's network capture into the attack list. Add extra `probes` (`{"url": "{origin}/api/x/{id}"}`) for routes the UI never calls.
+- `app` is optional. Without it, run the app yourself and restart it if the agent changes server code.
+- `users.*.signedInCheck` overrides how Kane proves a login worked (default: "the page shows you are signed in as &lt;username&gt;").
+- `agent.command` swaps Claude Code for any agent that reads a prompt on stdin (Codex, Gemini CLI, Aider...). `agent.protect` lists paths the agent may not change.
+- Passwords go to Kane as **secret variables**, never inside the objective text.
 
 Only point Zelkaro at apps you own or are authorized to test.
 
 ## Inside your coding agent
 
-`.claude/skills/zelkaro/SKILL.md` teaches Claude Code to run `zelkaro scan --json` before it calls any auth or data-access change "done", read Kane's verdicts, and fix what Kane caught. `scan --json` prints:
-
-```json
-{ "status": "leaking", "leaks": [{ "id": "intruder-api", "actor": "intruder", "target": "http://localhost:3000/api/notes/105", "kane": "A logged-in user can open note 105 and see the protected CANARY payroll text." }], "report": ".../REPORT.md" }
-```
-
-Exit codes: `0` sealed, `1` leaking, `2` inconclusive. That makes it a drop-in CI gate.
+`.claude/skills/zelkaro/SKILL.md` teaches Claude Code to run `zelkaro scan --json` before it calls any auth or data-access change "done", read Kane's verdicts, and fix what Kane caught. Exit codes: `0` sealed, `1` leaking, `2` inconclusive, `4` Kane login expired. That makes it a drop-in CI gate.
 
 ## How it maps to the judging
 
 | Bar | Where |
 |---|---|
-| Ships end to end | `heal` runs plant → probes → agent fix → re-scan → sealed, unattended |
-| Kane caught or proved something | Round 1: Kane saw another user's payroll on 4 routes. Round 2: Kane proved all 4 blocked and the owner still in |
-| Agent and Kane talk | Kane's verdict, explanation and screenshot path become Claude Code's prompt. Claude's patch is judged only by Kane's next run |
+| Ships end to end | `heal` runs plant → discover → probe → tamper → control → agent fix → app restart → re-scan → sealed, unattended |
+| Kane caught or proved something | Kane caught **7 leaks** (6 cross-user reads across 3 routes, one of them a hidden API it discovered itself, plus 1 overwrite) and then **proved the fix** with a fresh canary. See [the real run](#the-real-run) |
+| Agent and Kane talk | Kane's verdicts, explanations, discovered routes and screenshot paths become Claude Code's prompt. Claude's patch is judged only by Kane's next run |
+
+## Prior art and limits
+
+- Two-account authorization testing is a standard pentest technique. Burp Suite's [Autorize](https://github.com/PortSwigger/autorize) replays proxied requests with a second session. Zelkaro's differences: no proxy or manual browsing (Kane drives the UI from one English sentence), it also tests writes, it checks that the owner keeps access, and it closes the loop by having an agent fix the bug and Kane prove the fix.
+- It tests one record type per config and two accounts (no roles or teams yet).
+- Kane is an AI agent, so individual runs can be flaky. Zelkaro retries a check once when only the sign-in step failed, and reports `inconclusive`, never `sealed`, when it can't get a clean verdict.
+- One round costs about 9 Kane runs (around 200 credits) and 10–15 minutes.
 
 ## Project layout
 
 ```
-bin/zelkaro.js        CLI: scan, heal
-src/scan.js             plant, control, probes; turns Kane results into verdicts
-src/kane.js             runs `kane-cli run --agent`, parses NDJSON, retries while Kane finalizes
-src/evidence.js         reads Kane evidence packs, pulls the decisive screenshot
-src/zip.js              tiny zip reader (no dependencies)
-src/agent.js            builds the fix prompt, runs the coding agent, captures the diff
-src/report.js           REPORT.md, report.json, badge.svg
-demo/                   Notely, a deliberately leaky notes app (the CVE-2025-48757 bug class)
-docs/proof/             the real run shown above
+bin/zelkaro.js      CLI: scan, heal
+src/scan.js         plant, discover, probes, tamper, owner control; turns Kane results into verdicts
+src/evidence.js     reads Kane evidence packs: decisive screenshot, network log (HAR) discovery
+src/kane.js         runs `kane-cli run --agent`, parses NDJSON, retries transient errors, stops on expired login
+src/agent.js        builds the fix prompt (Kane text fenced as untrusted), runs the coding agent, captures the diff
+src/app.js          starts / restarts / stops the app under test
+src/report.js       REPORT.md, report.json, badge.svg
+src/zip.js          tiny zip reader (no dependencies)
+demo/               Notely, a deliberately leaky notes app: open reads, any-user edits, a forgotten /activity route
+experiments/        the "can AI write this bug?" experiment: prompts, generated apps, build logs
+docs/proof/         the real run shown above
 ```
-
-## Cost
-
-One scan is 6 Kane runs (plant, owner control, 4 probes), about 130 credits. A full heal with one fix is about 260.
 
 ## License
 

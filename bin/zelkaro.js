@@ -24,7 +24,7 @@ Usage:
   zelkaro scan [--config zelkaro.config.json] [--out zelkaro-report] [--json]
   zelkaro heal [--config zelkaro.config.json] [--out zelkaro-report] [--max-rounds 3]
 
-scan  exits 0 when sealed, 1 when Kane saw a leak, 2 when inconclusive.
+scan  exits 0 when sealed, 1 when Kane saw a leak, 2 when inconclusive, 4 when the Kane login expired.
 heal  loops scan -> agent fix -> scan until Kane proves no leaks (or max rounds).
 
 Requires kane-cli (npm i -g @testmuai/kane-cli) and \`kane-cli login\`.`);

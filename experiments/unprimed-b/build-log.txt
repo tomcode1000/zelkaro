@@ -1,0 +1,29 @@
+I've built the app as `server.js` plus a `package.json` with `"type": "module"`. I haven't run it: this session needs approval for every shell command, including a plain syntax check, so none of it executed. I wrote a test script that logs in as both users and checks the access rules, but it didn't run either. To try it, run `npm start` (or `node server.js`) and open http://localhost:3002.
+
+**What it does**
+- **Login and logout:** a login form at `/login` for alice / alice123 and bob / bob123. "Log out" sits in the header on every page. Any other page sends you to `/login` if you aren't signed in.
+- **Home page:** `/` lists only your own notes, newest first, with a form to create one (title + body).
+- **Note page:** `/notes/:id` shows the title and body. Only the note's owner can open it; anyone else gets a "Not found" page.
+- **JSON endpoint:** `GET /api/notes/:id` returns `{ id, title, body, createdAt }` to the owner. It returns 401 if you're not signed in and 404 if the note isn't yours.
+
+**Sharing works differently from what you described.** You asked for private notes that can be shared by sending the note's link. Those two conflict: note IDs are just 1, 2, 3, so if `/notes/1` worked for anyone holding the link, anyone could read every note by trying numbers. So:
+- `/notes/:id` stays owner-only.
+- Each note page has a **"Create share link"** button. It makes a random link like `/shared/Xk3…`, and that link is what you send a friend.
+- Anyone with that link can read the note without logging in, so a friend doesn't need one of the two accounts. **"Stop sharing"** turns the link off.
+
+If you'd rather share links only work for signed-in users, that's a one-line change.
+
+**Other safety measures**
+- Note text is escaped before display, so a note can't inject code into the page.
+- Forms submitted from other websites are rejected.
+- Login cookies can't be read by page scripts and are random.
+- Form submissions are capped in size.
+- Pages don't pass their address to other sites, so share links don't leak that way.
+
+Everything is stored in memory, so notes and logins disappear when the server restarts.
+
+Files are in `C:\Users\Toleexxzy\AppData\Local\Temp\claude\c41f6628b1c4becb\bdf1fb38-282a-49d4-be86-5ae53a6836bd\scratchpad\exp-b`:
+- `server.js`
+- `package.json`
+
+To run the test, start the server with `PORT=3099 node server.js`, then run `node C:\Users\TOLEEX~1\AppData\Local\Temp\claude\9196e308ac5e1f1d\acc048f1-6e31-44e8-9465-aa370088fb61\scratchpad\smoke.mjs` in a second terminal.

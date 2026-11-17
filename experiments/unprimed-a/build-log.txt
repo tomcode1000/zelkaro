@@ -1,0 +1,21 @@
+I built the app in two files, `package.json` and `server.js`, but I couldn't run it: the permission prompts for starting the server and for a plain syntax check (`node --check`) were declined. So it hasn't been tested at all.
+
+**To run it:** `npm start` (or `node server.js`), then open http://localhost:3001. Set `PORT=...` to use a different port.
+
+**What it does:**
+- **Login and logout:** `/login` checks the two hardcoded accounts (alice / alice123, bob / bob123). Logging in sets a random session cookie that the browser's JavaScript can't read. Logout is a small button in the nav bar; it clears the session and sends you back to `/login`.
+- **`/`:** lists the logged-in user's own notes, with a form to add one (title + body).
+- **`/notes/:id`:** shows that note's title and body.
+- **`GET /api/notes/:id`:** returns `{ id, title, body, createdAt }` as JSON. It uses the same session cookie and answers `401` if you're not logged in, never a redirect.
+- **Notes really are private:** both note routes only return a note to the user who created it. Anyone else gets `404`, so bob can't read alice's notes by guessing an ID, and the response doesn't reveal whether the note exists.
+- **Safe display:** titles and bodies are escaped before they go into a page, so a note containing HTML shows up as text instead of running as code.
+- Everything is stored in memory, so notes and sessions disappear when the server restarts.
+
+**Two things to know for the mobile app:**
+- The API reads the same browser session cookie, so a mobile app would need to handle cookies. Token-based login would be the usual next step.
+- Note IDs are simple counters (1, 2, 3…). That's safe because every request checks the note's owner, but the IDs are guessable.
+
+**To check it once you allow running commands:**
+1. Log in as alice and create a note.
+2. Log in as bob in a private window.
+3. Open `/notes/1` and `/api/notes/1` as bob. Both should give 404.
