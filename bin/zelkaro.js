@@ -46,7 +46,7 @@ function clearReportDir(dir) {
   const rel = path.relative(dir, cwd);
   const isCwdOrParent = rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
   const entries = fs.readdirSync(dir);
-  const looksLikeReport = entries.length === 0 || entries.includes('report.json');
+  const looksLikeReport = entries.length === 0 || entries.includes('report.json') || entries.includes('.zelkaro-report');
   if (isCwdOrParent || entries.includes('.git') || !looksLikeReport) {
     console.error(`zelkaro: refusing to clear ${dir}: it is not a previous Zelkaro report folder. Pick another --out.`);
     process.exit(3);
@@ -54,6 +54,9 @@ function clearReportDir(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 clearReportDir(outDir);
+// Mark the folder as ours right away, so a run that is cut off mid-scan can still be cleared next time.
+fs.mkdirSync(outDir, { recursive: true });
+fs.writeFileSync(path.join(outDir, '.zelkaro-report'), '');
 
 // Files the coding agent must not touch: the config (it defines what "sealed"
 // means) plus anything listed in agent.protect. Changes are reverted and
