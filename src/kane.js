@@ -29,12 +29,22 @@ export async function runKane(objective, opts) {
   // retry instead of recording a false "error".
   // Seen in practice: a burst of several failures in a row, so back off up to
   // ~9 minutes in total before giving up. Also pause briefly after every run.
+  let authFails = 0;
   for (let attempt = 1; ; attempt++) {
     const res = await runOnce(objective, opts);
     await sleep(5000);
     // An expired login fails every remaining run. Stop the scan and say so
     // instead of burning through the rest of the checks.
+    // Token refresh sometimes fails on a network blip while the login is still
+    // valid, so give it a few tries before declaring the login expired.
     if (!res.end && /token refresh failed|run: kane-cli login|not authenticated/i.test(res.stderr)) {
+      authFails++;
+      if (authFails <= 3) {
+        opts.log?.(`kane token refresh failed, retrying in ${authFails * 30}s`);
+        await sleep(authFails * 30000);
+        attempt--;
+        continue;
+      }
       throw new KaneAuthError('Kane CLI login expired. Run `kane-cli login` (or `kane-cli login --username <u> --access-key <key>` for long runs), then run Zelkaro again.');
     }
     const transient = !res.end && /must be configured|lock/i.test(res.stderr);
