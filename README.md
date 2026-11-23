@@ -1,10 +1,23 @@
 # Zelkaro
 
-![zelkaro](docs/proof/badge.svg)
+[![Verified with Kane CLI](docs/proof/badge.svg)](docs/proof/REPORT.md)
+&nbsp;[![Live demo](https://img.shields.io/badge/live-tomcode1000.github.io%2Fzelkaro-ffd23f)](https://tomcode1000.github.io/zelkaro/)
+&nbsp;[![License: MIT](https://img.shields.io/badge/license-MIT-3ad98f)](LICENSE)
 
 **Give it two logins. Kane CLI maps every route your app uses for a user's private data, attacks each one as a second user and as a logged-out visitor, tries to overwrite the data, hands the evidence to your coding agent, and won't say "sealed" until Kane proves it in a real browser.**
 
-Built for the [Kane CLI Online Hackathon](https://www.kaneclihack.sh/) (12–19 Nov 2026).
+**▶ Live page with the real run:** https://tomcode1000.github.io/zelkaro/ — built for the [Kane CLI Online Hackathon](https://www.kaneclihack.sh/) (deadline 26 Nov 2026).
+
+![A real run: Kane plants a canary, catches 7 cross-user leaks, Claude Code patches the access checks, and Kane re-attacks a fresh canary until the app is sealed](docs/proof/zelkaro-loop.gif)
+
+## For judges — every claim, one click
+
+| The bar | Proof you can open |
+|---|---|
+| **Ships end to end** | One command, `node bin/zelkaro.js heal`, runs plant → discover → probe → tamper → control → agent fix → restart → re-scan → sealed, unattended: [REPORT.md](docs/proof/REPORT.md) |
+| **Kane caught something real** | 7 leaks in round 1 — 6 cross-user reads (incl. an `/activity` API route Kane **discovered itself** from its network log) and 1 overwrite: [the recorded run](https://tomcode1000.github.io/zelkaro/#evidence) |
+| **Agent ↔ Kane closed loop** | Kane's verdicts + screenshots become Claude Code's prompt; only Kane's next round (fresh canary) judges the patch: [Claude's reply and diff](https://tomcode1000.github.io/zelkaro/#fix) |
+| **A developer can run it** | No paid service; demo logins are in [`zelkaro.config.json`](zelkaro.config.json). If Kane can't run on your machine, the full recorded run is in [`docs/proof/`](docs/proof/) |
 
 ---
 
