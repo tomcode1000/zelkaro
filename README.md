@@ -4,6 +4,8 @@
 &nbsp;[![Live demo](https://img.shields.io/badge/live-tomcode1000.github.io%2Fzelkaro-ffd23f)](https://tomcode1000.github.io/zelkaro/)
 &nbsp;[![License: MIT](https://img.shields.io/badge/license-MIT-3ad98f)](LICENSE)
 
+<p align="center"><img src="docs/proof/zelkaro-hero.gif" width="420" alt="Animated diagram: a second user, a logged-out visitor and a probe attack a private record that holds a canary; the owner keeps access while a shield seals the record"></p>
+
 **Give it two logins. Kane CLI maps every route your app uses for a user's private data, attacks each one as a second user and as a logged-out visitor, tries to overwrite the data, hands the evidence to your coding agent, and won't say "sealed" until Kane proves it in a real browser.**
 
 **▶ Live page with the real run:** https://tomcode1000.github.io/zelkaro/ — built for the [Kane CLI Online Hackathon](https://www.kaneclihack.sh/) (deadline 26 Nov 2026).
