@@ -3,6 +3,9 @@
 [![Verified with Kane CLI](docs/proof/badge.svg)](docs/proof/REPORT.md)
 &nbsp;[![Live demo](https://img.shields.io/badge/live-tomcode1000.github.io%2Fzelkaro-ffd23f)](https://tomcode1000.github.io/zelkaro/)
 &nbsp;[![License: MIT](https://img.shields.io/badge/license-MIT-3ad98f)](LICENSE)
+<br>[![CI](https://github.com/tomcode1000/zelkaro/actions/workflows/ci.yml/badge.svg)](https://github.com/tomcode1000/zelkaro/actions/workflows/ci.yml)
+&nbsp;[![CodeQL](https://github.com/tomcode1000/zelkaro/actions/workflows/codeql.yml/badge.svg)](https://github.com/tomcode1000/zelkaro/actions/workflows/codeql.yml)
+&nbsp;[![tests](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftomcode1000%2Fzelkaro%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.message&label=tests&color=brightgreen)](https://github.com/tomcode1000/zelkaro/actions/workflows/ci.yml)
 
 <p align="center"><img src="docs/proof/zelkaro-hero.gif" width="420" alt="Animated diagram: a second user, a logged-out visitor and a probe attack a private record that holds a canary; the owner keeps access while a shield seals the record"></p>
 
@@ -273,6 +276,16 @@ Only point Zelkaro at apps you own or are authorized to test.
 | Ships end to end | `heal` runs plant → discover → probe → tamper → control → agent fix → app restart → re-scan → sealed, unattended |
 | Kane caught or proved something | Kane caught **7 leaks** (6 cross-user reads across 3 routes, one of them a hidden API it discovered itself, plus 1 overwrite) and then **proved the fix** with a fresh canary. See [the real run](#the-real-run) |
 | Agent and Kane talk | Kane's verdicts, explanations, discovered routes and screenshot paths become Claude Code's prompt. Claude's patch is judged only by Kane's next run |
+
+## Tested
+
+`npm test` runs **38 tests** (zero dependencies, `node --test`), green on Node 18, 20 and 22 in [CI](https://github.com/tomcode1000/zelkaro/actions/workflows/ci.yml), with [CodeQL](https://github.com/tomcode1000/zelkaro/actions/workflows/codeql.yml) security scanning on every push.
+
+| Suite | What it locks in |
+|---|---|
+| [`test/verdicts.test.js`](test/verdicts.test.js) | The rules that turn a Kane run into a verdict: a passing run is `blocked`, a failed **sign-in** is `inconclusive` (never a false leak), the canary in a failed assertion is a `leak`, an owner who loses access is `owner-locked-out`, and the tamper token on the owner's page is `tampered`. URL expansion, planted-URL extraction and the login phrasing (secret password variable, Step 1/2/3 order) too. |
+| [`test/demo-server.test.js`](test/demo-server.test.js) | The demo really is leaky — a second user and a logged-out visitor can both read the owner's note, and the forgotten `/activity` route needs no auth — while login, 404s and owner access behave. |
+| [`test/policies.test.js`](test/policies.test.js) | Pins the shipped insecure policies and specs the owner-only rule a correct fix must satisfy. |
 
 ## Prior art and limits
 

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "label": "tests",
+  "message": "0 passing",
+  "color": "brightgreen",
+  "tests": 0,
+  "passing": 0,
+  "failing": 0,
+  "generatedAt": "2026-11-23T12:48:14.990Z"
+}
