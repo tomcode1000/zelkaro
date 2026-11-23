@@ -19,7 +19,7 @@ const OWNER = 'owner';
 const INTRUDER = 'intruder';
 const ANON = 'anonymous';
 
-function loginPhrase(cfg, actor) {
+export function loginPhrase(cfg, actor) {
   if (actor === ANON) return 'Do not log in.';
   // Neutral variable names: Kane reads them, and a name like "intruder" makes
   // it second-guess which account it should be using.
@@ -47,7 +47,7 @@ export function expandUrl(template, planted) {
   return template.replaceAll('{url}', planted).replaceAll('{origin}', u.origin).replaceAll('{id}', idOf(planted));
 }
 
-function findUrl(end, origin) {
+export function findUrl(end, origin) {
   const state = { ...(end?.final_state || {}) };
   for (const [k, v] of Object.entries(end?.context?.variables || {})) state[k] = v?.value;
   const values = Object.entries(state).filter(([, v]) => typeof v === 'string' && v.startsWith(origin));
@@ -58,7 +58,7 @@ function findUrl(end, origin) {
 
 // Which assertion failed decides the verdict, so a failed sign-in check is
 // never mistaken for a leak.
-function failedAssert(steps, end) {
+export function failedAssert(steps, end) {
   const step = steps.find((s) => s.status === 'failed' && /^assert/i.test(s.summary));
   return step ? step.summary : String(end?.reason || '');
 }
@@ -67,7 +67,7 @@ function noResult(res) {
   return { verdict: 'error', detail: 'Kane produced no result: ' + res.stderr.split('\n').filter(Boolean).slice(-2).join(' ') };
 }
 
-function readVerdict(res, canary, steps) {
+export function readVerdict(res, canary, steps) {
   const end = res.end;
   if (!end) return noResult(res);
   if (end.status === 'passed') return { verdict: 'blocked', detail: end.one_liner || end.summary };
@@ -78,7 +78,7 @@ function readVerdict(res, canary, steps) {
   return { verdict: 'inconclusive', detail: `${end.reason_code}: ${end.one_liner || end.reason}` };
 }
 
-function ownerVerdict(res, canary, tamperToken, steps) {
+export function ownerVerdict(res, canary, tamperToken, steps) {
   const end = res.end;
   if (!end) return { owner: noResult(res), tamper: tamperToken ? 'inconclusive' : null };
   if (end.status === 'passed') return { owner: { verdict: 'ok', detail: end.one_liner || end.summary }, tamper: tamperToken ? 'blocked' : null };
