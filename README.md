@@ -279,7 +279,7 @@ Only point Zelkaro at apps you own or are authorized to test.
 
 ## Tested
 
-`npm test` runs **38 tests** (zero dependencies, `node --test`), green on Node 18, 20 and 22 in [CI](https://github.com/tomcode1000/zelkaro/actions/workflows/ci.yml), with [CodeQL](https://github.com/tomcode1000/zelkaro/actions/workflows/codeql.yml) security scanning on every push.
+`npm test` runs **38 tests** (zero dependencies, `node --test`), green on Node 20 and 22 in [CI](https://github.com/tomcode1000/zelkaro/actions/workflows/ci.yml), with [CodeQL](https://github.com/tomcode1000/zelkaro/actions/workflows/codeql.yml) security scanning on every push.
 
 | Suite | What it locks in |
 |---|---|
