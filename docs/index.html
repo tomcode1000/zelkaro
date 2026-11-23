@@ -197,6 +197,21 @@ pre.code .del{color:var(--leak);background:rgba(255,90,77,.07)}
 .runit pre{margin:0;padding:18px 20px;font-family:var(--mono);font-size:13.5px;line-height:1.75;overflow-x:auto;color:var(--ink)}
 .runit .cm{color:var(--faint)}.runit .ok{color:var(--seal)}.runit .cn{color:var(--canary)}
 
+/* interactive replay */
+.replaywin{background:#07080a;border:1px solid var(--line2);border-radius:13px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 26px 50px -30px rgba(0,0,0,.85);max-width:860px}
+.rbar{display:flex;align-items:center;gap:7px;padding:11px 15px;border-bottom:1px solid var(--line)}
+.rbar>i{width:11px;height:11px;border-radius:50%;background:var(--line2)}
+.rbar>i:first-child{background:#43362a}
+.rbar .rt{font-family:var(--mono);font-size:12px;color:var(--faint);margin-left:7px}
+.rbtn{margin-left:auto;font-family:var(--mono);font-size:12.5px;font-weight:700;color:#0a0b0d;background:var(--canary);border:0;border-radius:7px;padding:7px 15px;cursor:pointer;transition:filter .2s,transform .1s}
+.rbtn:hover{filter:brightness(1.08)}.rbtn:active{transform:scale(.97)}.rbtn.run{background:var(--line2);color:var(--dim)}
+.rout{margin:0;padding:17px 20px;min-height:300px;max-height:420px;overflow-y:auto;font-family:var(--mono);font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+.rout .ln{opacity:0;animation:lnin .25s forwards}@keyframes lnin{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.rout .ln{animation:none;opacity:1}}
+.rout .pr{color:var(--seal)}.rout .cn{color:var(--canary)}.rout .dim{color:var(--faint)}
+.rout .leak{color:var(--leak);font-weight:700}.rout .ok{color:var(--seal);font-weight:700}.rout .head{color:var(--ink);font-weight:700}
+.rcur{display:inline-block;width:8px;height:14px;background:var(--canary);vertical-align:-2px;animation:blink 1.05s steps(1) infinite}
+
 /* reveal */
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
 .reveal.in{opacity:1;transform:none}
@@ -207,18 +222,19 @@ footer a{color:var(--dim)}footer a:hover{color:var(--canary)}
 :focus-visible{outline:2px solid var(--canary);outline-offset:3px;border-radius:3px}
 
 /* hero diagram animation */
-.ring>circle:last-child{transform-origin:220px 200px;animation:spin 9s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.canary{transform-origin:220px 190px;animation:canaryPulse 2.6s ease-in-out infinite}
-@keyframes canaryPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.22)}}
-.beam{animation:flow 1.1s linear infinite, beamCycle 7s ease-in-out infinite}
-.beam.b2{animation-delay:0s,.25s}.beam.b3{animation-delay:0s,.5s}
-@keyframes flow{to{stroke-dashoffset:-16}}
-@keyframes beamCycle{0%,52%{opacity:1}64%,92%{opacity:.08}100%{opacity:1}}
-.shield{transform-origin:220px 200px;animation:seal 7s ease-in-out infinite}
-@keyframes seal{0%,50%{stroke-dashoffset:540;opacity:0}62%{stroke-dashoffset:0;opacity:1}90%{stroke-dashoffset:0;opacity:.85}100%{stroke-dashoffset:540;opacity:0}}
-.node.owner path{stroke-dasharray:3 5;animation:flow 1.3s linear infinite reverse}
-@media (prefers-reduced-motion:reduce){.ring>circle:last-child,.canary,.beam,.shield,.node.owner path,.tagpill .dot,.term .cur{animation:none}.shield{opacity:.7;stroke-dashoffset:0}.beam{opacity:.5}}
+.canary{transform-origin:210px 196px;animation:canaryPulse 2.6s ease-in-out infinite}
+@keyframes canaryPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.14)}}
+.attack{animation:attackCycle 7.5s ease-in-out infinite}
+@keyframes attackCycle{0%,55%{opacity:1}66%,90%{opacity:.12}100%{opacity:1}}
+.shield{transform-origin:220px 200px;transform:rotate(-90deg);animation:seal 7.5s ease-in-out infinite}
+@keyframes seal{0%,52%{stroke-dashoffset:490;opacity:0}64%{stroke-dashoffset:0;opacity:1}88%{stroke-dashoffset:0;opacity:.9}100%{stroke-dashoffset:490;opacity:0}}
+.seal-check{animation:checkPop 7.5s ease-in-out infinite}
+@keyframes checkPop{0%,60%{opacity:0}70%,88%{opacity:1}100%{opacity:0}}
+.tile rect:first-child,.record rect:first-child{transition:stroke .3s}
+@media (prefers-reduced-motion:reduce){
+  .canary,.attack,.shield,.seal-check,.tagpill .dot,.term .cur{animation:none}
+  .pk{display:none}.shield{opacity:.7;stroke-dashoffset:0}.seal-check{opacity:1}
+}
 </style>
 </head>
 <body>
@@ -249,50 +265,80 @@ footer a{color:var(--dim)}footer a:hover{color:var(--canary)}
       </div>
     </div>
     <div class="diagram" id="diagram" aria-label="Animation: two attackers and a logged-out visitor probe a private record holding a canary token; a shield seals and the probes are blocked while the owner keeps access.">
-      <svg viewBox="0 0 440 400" role="img">
+      <svg viewBox="0 0 440 400" role="img" font-family="JetBrains Mono, monospace">
         <defs>
-          <radialGradient id="recGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#ffd23f" stop-opacity=".22"/><stop offset="100%" stop-color="#ffd23f" stop-opacity="0"/>
-          </radialGradient>
-          <filter id="soft"><feGaussianBlur stdDeviation="2.4"/></filter>
-          <linearGradient id="beamR" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff5a4d" stop-opacity="0"/><stop offset="1" stop-color="#ff5a4d"/></linearGradient>
+          <radialGradient id="recGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffd23f" stop-opacity=".2"/><stop offset="100%" stop-color="#ffd23f" stop-opacity="0"/></radialGradient>
+          <linearGradient id="tileG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#171a1f"/><stop offset="1" stop-color="#101216"/></linearGradient>
+          <path id="cOwner" d="M96 98 C96 150 150 168 190 178"/>
+          <path id="cUser"  d="M344 98 C344 150 290 168 250 178"/>
+          <path id="cProbe" d="M96 302 C96 252 150 232 190 222"/>
+          <path id="cAnon"  d="M344 302 C344 252 290 232 250 222"/>
         </defs>
 
-        <!-- scan ring -->
-        <g class="ring">
-          <circle cx="220" cy="200" r="118" fill="none" stroke="#232730" stroke-width="1"/>
-          <circle cx="220" cy="200" r="118" fill="none" stroke="#ffd23f" stroke-width="2" stroke-linecap="round" stroke-dasharray="40 700" opacity=".8"/>
-        </g>
         <circle cx="220" cy="200" r="150" fill="url(#recGlow)"/>
 
-        <!-- attack beams (behind record) -->
-        <g class="beams" fill="none" stroke-width="2.4" stroke-linecap="round">
-          <path class="beam b1" d="M372 92 L250 178" stroke="url(#beamR)" stroke-dasharray="7 9"/>
-          <path class="beam b2" d="M372 320 L250 222" stroke="url(#beamR)" stroke-dasharray="7 9"/>
-          <path class="beam b3" d="M70 320 L192 224" stroke="url(#beamR)" stroke-dasharray="7 9"/>
+        <!-- connectors -->
+        <g fill="none" stroke-linecap="round">
+          <use href="#cOwner" stroke="#1d4433" stroke-width="1.5"/>
+          <g class="attack">
+            <use href="#cUser"  stroke="#3a1a16" stroke-width="1.5"/>
+            <use href="#cProbe" stroke="#2d323c" stroke-width="1.5"/>
+            <use href="#cAnon"  stroke="#2d323c" stroke-width="1.5"/>
+          </g>
         </g>
 
-        <!-- shield that seals -->
-        <circle class="shield" cx="220" cy="200" r="86" fill="none" stroke="#3ad98f" stroke-width="2.5" stroke-dasharray="540" stroke-dashoffset="540" opacity="0"/>
+        <!-- data packets -->
+        <g class="packets">
+          <circle class="pk" r="3" fill="#3ad98f"><animateMotion dur="2.3s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#cOwner"/></animateMotion></circle>
+          <g class="attack">
+            <circle class="pk" r="3" fill="#ff5a4d"><animateMotion dur="1.7s" repeatCount="indefinite"><mpath href="#cUser"/></animateMotion></circle>
+            <circle class="pk" r="3" fill="#ff5a4d"><animateMotion dur="1.7s" begin="0.85s" repeatCount="indefinite"><mpath href="#cUser"/></animateMotion></circle>
+            <circle class="pk" r="2.6" fill="#a4a69d"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#cProbe"/></animateMotion></circle>
+            <circle class="pk" r="2.6" fill="#a4a69d"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#cAnon"/></animateMotion></circle>
+          </g>
+        </g>
 
-        <!-- record card -->
+        <!-- seal shield -->
+        <circle class="shield" cx="220" cy="200" r="78" fill="none" stroke="#3ad98f" stroke-width="2.5" stroke-dasharray="490" stroke-dashoffset="490" opacity="0"/>
+
+        <!-- center record tile -->
         <g class="record">
-          <rect x="168" y="162" width="104" height="76" rx="11" fill="#131519" stroke="#2d323c" stroke-width="1.5"/>
-          <circle class="canary" cx="220" cy="190" r="9" fill="none" stroke="#ffd23f" stroke-width="2"/>
-          <circle cx="220" cy="190" r="3" fill="#ffd23f"/>
-          <path d="M220 199v10" stroke="#ffd23f" stroke-width="2" stroke-linecap="round"/>
-          <text x="220" y="225" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#6d6f68">CANARY</text>
+          <rect x="172" y="156" width="96" height="88" rx="18" fill="url(#tileG)" stroke="#2d323c" stroke-width="1.5"/>
+          <rect x="172" y="156" width="96" height="88" rx="18" fill="none" stroke="#ffd23f" stroke-width="1" opacity=".18"/>
+          <!-- lock badge -->
+          <g stroke="#6d6f68" stroke-width="1.5" fill="none"><path d="M243 176v-3a5 5 0 0 1 10 0v3"/><rect x="241" y="176" width="14" height="11" rx="2.5" fill="#101216"/></g>
+          <!-- canary beacon -->
+          <g class="canary"><circle cx="210" cy="196" r="9" fill="none" stroke="#ffd23f" stroke-width="2"/><circle cx="210" cy="196" r="3" fill="#ffd23f"/><path d="M210 205v11" stroke="#ffd23f" stroke-width="2" stroke-linecap="round"/></g>
+          <text x="220" y="234" text-anchor="middle" font-size="8.5" fill="#8b8d86" letter-spacing="1">CANARY</text>
+          <!-- sealed check -->
+          <path class="seal-check" d="M205 200l6 6 12-13" fill="none" stroke="#3ad98f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0"/>
         </g>
 
-        <!-- nodes -->
-        <g font-family="JetBrains Mono, monospace" font-size="10">
-          <!-- owner -->
-          <g class="node owner"><circle cx="220" cy="54" r="22" fill="#10291e" stroke="#1d4433" stroke-width="1.5"/><text x="220" y="52" text-anchor="middle" fill="#3ad98f" font-size="9">OWNER</text><text x="220" y="63" text-anchor="middle" fill="#3ad98f" font-size="8">alice</text><path d="M220 76 L220 158" stroke="#1d4433" stroke-width="1.5" stroke-dasharray="3 5"/></g>
-          <!-- bob -->
-          <g class="node"><circle cx="384" cy="92" r="22" fill="#2a1512" stroke="#4a201c" stroke-width="1.5"/><text x="384" y="90" text-anchor="middle" fill="#ff5a4d" font-size="9">USER 2</text><text x="384" y="101" text-anchor="middle" fill="#ff5a4d" font-size="8">bob</text></g>
-          <!-- anon -->
-          <g class="node"><circle cx="384" cy="330" r="22" fill="#171a1f" stroke="#2d323c" stroke-width="1.5"/><text x="384" y="327" text-anchor="middle" fill="#a4a69d" font-size="8">LOGGED</text><text x="384" y="338" text-anchor="middle" fill="#a4a69d" font-size="8">OUT</text></g>
-          <g class="node"><circle cx="56" cy="330" r="22" fill="#171a1f" stroke="#2d323c" stroke-width="1.5"/><text x="56" y="333" text-anchor="middle" fill="#a4a69d" font-size="8">PROBE</text></g>
+        <!-- actor tiles -->
+        <!-- OWNER (key) -->
+        <g class="tile">
+          <rect x="68" y="44" width="56" height="56" rx="15" fill="url(#tileG)" stroke="#1d4433" stroke-width="1.5"/>
+          <g stroke="#3ad98f" stroke-width="1.8" fill="none" stroke-linecap="round"><circle cx="90" cy="66" r="5"/><path d="M94 70l12 12"/><path d="M103 79l3-3M100 76l3-3"/></g>
+          <text x="96" y="116" text-anchor="middle" font-size="9" fill="#3ad98f">OWNER</text><text x="96" y="127" text-anchor="middle" font-size="8" fill="#6d6f68">alice</text>
+        </g>
+        <!-- USER 2 (masked) -->
+        <g class="tile attack">
+          <rect x="316" y="44" width="56" height="56" rx="15" fill="url(#tileG)" stroke="#4a201c" stroke-width="1.5"/>
+          <g stroke="#ff5a4d" stroke-width="1.8" fill="none" stroke-linecap="round"><circle cx="344" cy="62" r="5.5"/><path d="M334 84c0-8 20-8 20 0"/></g>
+          <rect x="337" y="60" width="14" height="3.4" rx="1.7" fill="#ff5a4d"/>
+          <text x="344" y="116" text-anchor="middle" font-size="9" fill="#ff5a4d">USER 2</text><text x="344" y="127" text-anchor="middle" font-size="8" fill="#6d6f68">bob</text>
+        </g>
+        <!-- PROBE (crosshair) -->
+        <g class="tile attack">
+          <rect x="68" y="300" width="56" height="56" rx="15" fill="url(#tileG)" stroke="#2d323c" stroke-width="1.5"/>
+          <g stroke="#a4a69d" stroke-width="1.7" fill="none" stroke-linecap="round"><circle cx="96" cy="328" r="7"/><path d="M96 318v3M96 335v3M86 328h3M103 328h3"/></g><circle cx="96" cy="328" r="1.6" fill="#ffd23f"/>
+          <text x="96" y="372" text-anchor="middle" font-size="8.5" fill="#8b8d86">PROBE</text>
+        </g>
+        <!-- LOGGED OUT (person + slash) -->
+        <g class="tile attack">
+          <rect x="316" y="300" width="56" height="56" rx="15" fill="url(#tileG)" stroke="#2d323c" stroke-width="1.5"/>
+          <g stroke="#a4a69d" stroke-width="1.7" fill="none" stroke-linecap="round"><circle cx="344" cy="320" r="5.5"/><path d="M334 342c0-8 20-8 20 0"/><path d="M331 345L357 316"/></g>
+          <text x="344" y="372" text-anchor="middle" font-size="8" fill="#8b8d86">LOGGED OUT</text>
         </g>
       </svg>
     </div>
@@ -338,6 +384,19 @@ footer a{color:var(--dim)}footer a:hover{color:var(--canary)}
   </div>
 </section>
 
+<!-- replay -->
+<section id="replay">
+  <div class="wrap">
+    <p class="eyebrow reveal">Try it here</p>
+    <h2 class="reveal">Replay the exact run, step by step.</h2>
+    <p class="sub reveal">This streams the real steps from <code>docs/proof/report.json</code> — Kane's actual verdicts, no simulation. Zelkaro drives real Chrome, so a true live scan runs from your terminal (the two commands are below); this lets you watch the recorded one unfold.</p>
+    <div class="replaywin reveal">
+      <div class="rbar"><i></i><i></i><i></i><span class="rt">zelkaro heal · recorded replay</span><button id="replayBtn" class="rbtn">▶ Run</button></div>
+      <pre id="replayOut" class="rout"><span class="dim">Press <b style="color:var(--canary)">▶ Run</b> to replay the recorded run.</span></pre>
+    </div>
+  </div>
+</section>
+
 <!-- how -->
 <section id="how">
   <div class="wrap">
@@ -345,11 +404,11 @@ footer a{color:var(--dim)}footer a:hover{color:var(--canary)}
     <h2 class="reveal">Every verdict comes from Kane.</h2>
     <p class="sub reveal">Zelkaro never decides a leak itself. It plants, reads Kane's own network capture, attacks, and asks Kane.</p>
     <div class="flow">
-      <div class="step reveal"><span class="k">01</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#ffd23f" stroke-width="1.6"><circle cx="12" cy="10" r="4"/><path d="M12 14v6" stroke-linecap="round"/><circle cx="12" cy="10" r="1.2" fill="#ffd23f" stroke="none"/></svg><b>PLANT</b><p>Kane signs in as the owner and saves a random canary in a private record.</p></div>
-      <div class="step reveal"><span class="k">02</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#ffd23f" stroke-width="1.6"><path d="M3 12h4l2-5 3 10 2-5h7" stroke-linecap="round" stroke-linejoin="round"/></svg><b>DISCOVER</b><p>Its network log reveals every page and API that touched the record.</p></div>
-      <div class="step reveal"><span class="k">03</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#ff5a4d" stroke-width="1.6"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5L21 21" stroke-linecap="round"/></svg><b>PROBE</b><p>Kane opens each route as a second user and logged out.</p></div>
-      <div class="step reveal"><span class="k">04</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#ff5a4d" stroke-width="1.6"><path d="M4 7l8-4 8 4v6c0 5-4 8-8 9-4-1-8-4-8-9z"/><path d="M9 11l2 2 4-4" stroke="#ff5a4d" stroke-linecap="round" stroke-linejoin="round" opacity=".4"/></svg><b>TAMPER</b><p>As the second user, Kane tries to overwrite the record.</p></div>
-      <div class="step reveal"><span class="k">05</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#3ad98f" stroke-width="1.6"><path d="M4 7l8-4 8 4v6c0 5-4 8-8 9-4-1-8-4-8-9z"/><path d="M9 11.5l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>CONTROL</b><p>Kane confirms the owner still sees it, untouched. "Deny everyone" fails.</p></div>
+      <div class="step reveal"><span class="k">01</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#ffd23f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5" opacity=".35"/><circle cx="12" cy="10.5" r="3"/><circle cx="12" cy="10.5" r="1" fill="#ffd23f" stroke="none"/><path d="M12 13.5V17"/></svg><b>PLANT</b><p>Kane signs in as the owner and saves a random canary in a private record.</p></div>
+      <div class="step reveal"><span class="k">02</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#ffd23f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5" opacity=".35"/><path d="M8 13a4 4 0 0 1 4-4M8 13a8 8 0 0 1 8-8" opacity=".9"/><path d="M8 13l5 5"/><circle cx="8" cy="13" r="1.1" fill="#ffd23f" stroke="none"/></svg><b>DISCOVER</b><p>Its network log reveals every page and API that touched the record.</p></div>
+      <div class="step reveal"><span class="k">03</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#ff5a4d" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5" opacity=".35"/><circle cx="12" cy="12" r="4.5"/><path d="M12 5v2.5M12 16.5V19M5 12h2.5M16.5 12H19"/><circle cx="12" cy="12" r="1.1" fill="#ff5a4d" stroke="none"/></svg><b>PROBE</b><p>Kane opens each route as a second user and logged out.</p></div>
+      <div class="step reveal"><span class="k">04</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#ff5a4d" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5" opacity=".35"/><path d="M8 8h4M8 11.5h3"/><path d="M11 17l5.5-5.5 2 2L13 19l-2.6.6z"/></svg><b>TAMPER</b><p>As the second user, Kane tries to overwrite the record.</p></div>
+      <div class="step reveal"><span class="k">05</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#3ad98f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l6.5 2.6V11c0 4.2-2.8 7-6.5 8.4C8.3 18 5.5 15.2 5.5 11V6.1z"/><path d="M9.2 11.6l2 2 3.6-3.8"/></svg><b>CONTROL</b><p>Kane confirms the owner still sees it, untouched. "Deny everyone" fails.</p></div>
     </div>
   </div>
 </section>
@@ -502,8 +561,53 @@ node bin/zelkaro.js heal   <span class="cm">› Claude fixes, Kane proves,</span
     });
   }
 
+  /* ---- interactive replay (streams the real report.json) ---- */
+  function replayLines(d){
+    var L=[],pad=function(s,n){s=String(s);return (s+'                              ').slice(0,n)};
+    L.push(['$ zelkaro heal','pr']);
+    L.push(['app: starting `node demo/server.js` … ready','dim']);
+    d.rounds.forEach(function(r,ri){
+      L.push(['','']);
+      L.push(['══ Round '+(ri+1)+' · scanning http://localhost:3000','head']);
+      var pl=find(r,'plant');
+      L.push(['  plant     alice saves '+r.canary+'  → '+(pl?path(pl.target):''),'cn']);
+      if(r.discovered&&r.discovered.length) L.push(['  discover  Kane network log → '+r.discovered.map(function(x){return path(x.url)}).join(', '),'dim']);
+      r.checks.forEach(function(c){
+        if(c.kind!=='read'&&c.kind!=='tamper'&&c.id!=='owner-control')return;
+        var who=c.actor==='intruder'?'bob  ':c.actor==='anonymous'?'anon ':'alice';
+        var act=c.kind==='tamper'?'tamper':c.id==='owner-control'?'owner ':'read  ';
+        var lbl=({leak:'LEAK',tampered:'TAMPERED',blocked:'BLOCKED',ok:'OWNER OK','owner-locked-out':'LOCKED OUT',inconclusive:'UNSURE'})[c.verdict]||String(c.verdict).toUpperCase();
+        var cls=(c.verdict==='leak'||c.verdict==='tampered'||c.verdict==='owner-locked-out')?'leak':(c.verdict==='blocked'||c.verdict==='ok')?'ok':'dim';
+        L.push(['  '+act+' '+who+'  '+pad(path(c.target),26)+' '+lbl,cls]);
+      });
+      L.push(['  → round '+(ri+1)+': '+r.status.toUpperCase()+'  ('+r.leaks.length+' leak'+(r.leaks.length===1?'':'s')+')', r.leaks.length?'leak':'ok']);
+      var fix=(d.fixes||[]).filter(function(f){return f.round===ri+1})[0];
+      if(fix){var rep=(fix.reply||'').trim();var dot=rep.indexOf('. ');if(dot>0)rep=rep.slice(0,dot+1);
+        L.push(['','']);L.push(['→ handing '+r.leaks.length+' leaks to Claude Code','head']);
+        L.push(['  agent  '+rep.slice(0,118)+(rep.length>118?'…':''),'dim']);
+        L.push(['  app: restarting with the patch, fresh canary next round','dim']);}
+    });
+    L.push(['','']);
+    var fin=d.rounds[d.rounds.length-1];
+    L.push(fin.status==='sealed'?['✔ SEALED — every probe blocked, tamper failed, owner keeps full access','ok']:['status: '+fin.status.toUpperCase(),'leak']);
+    return L;
+  }
+  var rp={run:false,timer:null};
+  function paintLine(out,ln){var s=el('div','ln'+(ln[1]?' '+ln[1]:''));s.textContent=ln[0]||' ';out.appendChild(s);return s}
+  function runReplay(){
+    var out=$('replayOut'),btn=$('replayBtn'),L=replayLines(data),i=0,cur=el('span','rcur');
+    out.textContent='';rp.run=true;btn.textContent='Skip ⏭';btn.classList.add('run');
+    (function step(){
+      if(i>=L.length){rp.run=false;btn.textContent='↻ Replay';btn.classList.remove('run');if(cur.parentNode)cur.remove();return;}
+      paintLine(out,L[i]);out.appendChild(cur);out.scrollTop=out.scrollHeight;
+      rp.timer=setTimeout(step,L[i++][0]===''?55:105);
+    })();
+  }
+  function finishReplay(){clearTimeout(rp.timer);var out=$('replayOut'),btn=$('replayBtn');out.textContent='';replayLines(data).forEach(function(ln){paintLine(out,ln)});rp.run=false;btn.textContent='↻ Replay';btn.classList.remove('run');out.scrollTop=out.scrollHeight;}
+  function wireReplay(){$('replayBtn').onclick=function(){if(!data)return;rp.run?finishReplay():runReplay()}}
+
   $('r0').onclick=function(){round=0;draw()};$('r1').onclick=function(){round=1;draw()};
-  fetch('proof/report.json').then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){data=j;stats();draw();patch()})
+  fetch('proof/report.json').then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){data=j;stats();draw();patch();wireReplay()})
     .catch(function(){$('view').innerHTML='<div class="txt"><p class="reply">Run data loads from <code>docs/proof/report.json</code> on the live site. See <a class="run" href="https://github.com/tomcode1000/zelkaro/blob/main/docs/proof/REPORT.md">REPORT.md</a>.</p></div>';
       $('stats').innerHTML='<div class="s"><div class="n leak">7</div><div class="l">leaks Kane caught</div></div><div class="s"><div class="n seal">0</div><div class="l">after the fix</div></div><div class="s"><div class="n seal">SEALED</div><div class="l">final verdict</div></div><div class="s"><div class="n">54</div><div class="l">min · 449 credits</div></div>';
       $('reply').textContent='Loads on the live site.';});
